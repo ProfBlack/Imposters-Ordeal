@@ -119,7 +119,10 @@ namespace ImpostersOrdeal
         {
             monoBehaviourCollection = new();
             foreach (PathEnum pe in Enum.GetValues(typeof(PathEnum)))
-                monoBehaviourCollection[pe] = Task.Run(() => fileManager.GetMonoBehaviours(pe));
+            {
+                if (pe != PathEnum.UNKNOWN)
+                    monoBehaviourCollection[pe] = Task.Run(() => fileManager.GetMonoBehaviours(pe));
+            }   
         }
 
         /// <summary>

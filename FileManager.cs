@@ -10,6 +10,9 @@ using SmartPoint.AssetAssistant;
 using System.Configuration;
 using System.Text;
 using Newtonsoft.Json;
+using YamlDotNet.RepresentationModel;
+using YamlDotNet.Serialization;
+using static ImpostersOrdeal.GameDataTypes;
 
 namespace ImpostersOrdeal
 {
@@ -53,6 +56,7 @@ namespace ImpostersOrdeal
         private string metadataPath;
         private string externalJsonPath;
         private Dictionary<string, FileData> fileArchive;
+        private Dictionary<string, YAMLFileData> yamlArchive;
         private AssetsManager am = new();
         private int fileIndex = 0;
 
@@ -68,6 +72,16 @@ namespace ImpostersOrdeal
             {
                 return bundle != null;
             }
+        }
+
+        private class YAMLFileData
+        {
+            public string fileLocation;
+            public string assetPath;
+            public string unityPrefix;
+            public PathEnum bundleOrigin;
+            public bool tempLocation;
+            public MonoType monoType;
         }
 
         private enum FileSource
@@ -114,7 +128,6 @@ namespace ImpostersOrdeal
             metadataPath = GetDataPath(fbd.SelectedPath) + "\\Managed\\Metadata";
             externalJsonPath = GetDataPath(fbd.SelectedPath) + "\\ExtraData";
 
-
             //Setup fileArchive
             fileArchive = new();
             for (int i = 0; i < assetAssistantRelevantFiles.Length; i++)
@@ -143,6 +156,9 @@ namespace ImpostersOrdeal
             c.Save(ConfigurationSaveMode.Modified);
             ConfigurationManager.RefreshSection(c.AppSettings.SectionInformation.Name);
 
+            //Setup yamlArchive
+            yamlArchive = new();
+
             return true;
         }
 
@@ -166,7 +182,6 @@ namespace ImpostersOrdeal
             metadataPath = GetDataPath(dumpPath) + "\\Managed\\Metadata";
             externalJsonPath = GetDataPath(dumpPath) + "\\ExtraData";
 
-
             //Setup fileArchive
             fileArchive = new();
             for (int i = 0; i < assetAssistantRelevantFiles.Length; i++)
@@ -184,6 +199,9 @@ namespace ImpostersOrdeal
                 DecompressBundle(fd.bundle);
                 fileArchive[gamePath] = fd;
             }
+
+            //setup yamlArchive
+            yamlArchive = new();
 
             return true;
         }
@@ -296,6 +314,61 @@ namespace ImpostersOrdeal
                 fileArchive[gamePath].fileLocation = modFilePaths[fileIdx];
             }
             return reanalysisNecessary;
+        }
+
+        /// <summary>
+        ///  Gets a mod directory from the user and loads all the needed files it contains into yamlArchive.
+        /// </summary>
+        public bool AddYAMLMod()
+        {
+            //Get the dump path from user
+            FolderBrowserDialog fbd = new();
+            fbd.Description = "Select a mod folder containing an Assets folder.";
+            if (fbd.ShowDialog() != DialogResult.OK)
+                return false;
+
+            //Check that it's a game directory
+            if (!IsUnityDirectory(fbd.SelectedPath))
+            {
+                MessageBox.Show("Path does not contain an Assets folder.",
+                "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
+            string assetsPath = Path.Combine(fbd.SelectedPath, "Assets");
+
+            //Loads all files
+            string[] modFilePaths = Directory.GetFiles(assetsPath, "*.asset", SearchOption.AllDirectories);
+            for (int fileIdx = 0; fileIdx < modFilePaths.Length; fileIdx++)
+            {
+                string absolutePath = assetsPath;
+                string gamePath = modFilePaths[fileIdx].Substring(absolutePath.Length + 1, modFilePaths[fileIdx].Length - absolutePath.Length - 1);
+                if (!yamlArchive.ContainsKey(gamePath))
+                    yamlArchive[gamePath] = GenerateFileDataFromYAMLFile(modFilePaths[fileIdx], gamePath);
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        ///  Finds what path in the PathEnum a yaml file is for.
+        /// </summary>
+        private YAMLFileData GenerateFileDataFromYAMLFile(string fileLocation, string assetPath)
+        {
+            YAMLFileData fd = new();
+            fd.fileLocation = fileLocation;
+            fd.assetPath = assetPath;
+            fd.tempLocation = false;
+
+            var yamlLines = File.ReadAllLines(fileLocation);
+            string yaml = string.Join("\n", yamlLines.Skip(3));
+            string metaYaml = File.ReadAllText(fileLocation + ".meta");
+
+            fd.unityPrefix = string.Join("\n", yamlLines.Take(3));
+            fd.bundleOrigin = FindPathEnumForYAML(FromYaml<MetaAsset>(metaYaml).NativeFormatImporter.AssetBundleName, assetPath);
+            fd.monoType = FindMonoTypeForYAML(fd.bundleOrigin, yaml);
+
+            return fd;
         }
 
         /// <summary>
@@ -903,12 +976,79 @@ namespace ImpostersOrdeal
         }
 
         /// <summary>
+        ///  Checks whether the path contains an Assets folder.
+        /// </summary>
+        private static bool IsUnityDirectory(string path)
+        {
+            return Directory.Exists(path + "\\Assets");
+        }
+
+        /// <summary>
         ///  For generating unique file names.
         /// </summary>
         private int GetFileIndex()
         {
             fileIndex++;
             return fileIndex;
+        }
+
+        /// <summary>
+        ///  Finds what path in the PathEnum a yaml file is for.
+        /// </summary>
+        private PathEnum FindPathEnumForYAML(string bundleName, string assetPath)
+        {
+            if (bundleName != string.Empty)
+            {
+                switch (bundleName)
+                {
+                    case "ev_script": return PathEnum.EvScript;
+                    case "scriptableobjects/gamesettings": return PathEnum.Gamesettings;
+                }
+            }
+
+            // No assigned bundle
+            return PathEnum.UNKNOWN;
+        }
+
+        /// <summary>
+        ///  Finds what type of MonoBehaviour a yaml file is.
+        /// </summary>
+        private MonoType FindMonoTypeForYAML(PathEnum pathEnum, string yaml)
+        {
+            switch (pathEnum)
+            {
+                case PathEnum.EvScript:
+                    if (FromYaml<EventCameraData>(yaml) != null)
+                        return MonoType.EventCameraData;
+                    else
+                        return MonoType.UNKNOWN;
+
+                case PathEnum.Gamesettings:
+                    if (FromYaml<GameSettings>(yaml) != null)
+                        return MonoType.GameSettings;
+                    else
+                        return MonoType.UNKNOWN;
+
+                default:
+                    return MonoType.UNKNOWN;
+            };
+        }
+
+        /// <summary>
+        ///  Deserializes a class from a yaml string.
+        /// </summary>
+        private T FromYaml<T>(string yaml) where T : class
+        {
+            try
+            {
+                var deserializer = new DeserializerBuilder().IgnoreUnmatchedProperties().Build();
+                return deserializer.Deserialize<T>(yaml);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("could not deserialize? " + ex.Message, "yaml test");
+                return null;
+            }
         }
     }
 }

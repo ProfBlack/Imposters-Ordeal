@@ -351,6 +351,27 @@ namespace ImpostersOrdeal
             }
         }
 
+        private void AddYAMLMod(object sender, EventArgs e)
+        {
+            if (MessageBox.Show("Fancy! Let's see if we can merge in a mod, shall we?\n" +
+                   "Gimme a folder that's got an \"Assets\" folder in it.",
+                   "Add YAML Mod", MessageBoxButtons.OKCancel, MessageBoxIcon.Information) == DialogResult.Cancel)
+                return;
+
+            if (fileManager.AddYAMLMod())
+            {
+                loadingForm = new("Some stuff changed...", flavor.GetSubTask());
+                loadingDisplay = new(StartLoadingDisplay);
+                loadingDisplay.Start();
+                Thread.Sleep(100);
+                DataParser.PrepareAnalysis();
+
+                loadingForm.UpdateSubTask(flavor.GetSubTask());
+                SetupConfig(Analyzer.GetSetupConfig());
+                loadingForm.Finish();
+            }
+        }
+
         private void Randomize(object sender, EventArgs e)
         {
             //Notify if already randomized.

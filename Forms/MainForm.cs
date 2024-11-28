@@ -364,7 +364,7 @@ namespace ImpostersOrdeal
                 loadingDisplay = new(StartLoadingDisplay);
                 loadingDisplay.Start();
                 Thread.Sleep(100);
-                DataParser.PrepareAnalysis();
+                DataParser.PrepareYAMLAnalysis();
 
                 loadingForm.UpdateSubTask(flavor.GetSubTask());
                 SetupConfig(Analyzer.GetSetupConfig());
@@ -408,9 +408,11 @@ namespace ImpostersOrdeal
             loadingDisplay.Start();
             Thread.Sleep(100);
             DataParser.CommitChanges();
+            DataParser.CommitChangesToYAML();
 
             loadingForm.UpdateSubTask(flavor.GetThought());
             fileManager.ExportMod();
+            fileManager.ExportModToYAML();
             fileManager.DeleteTemporaryFiles();
             loadingForm.Finish();
 
@@ -512,21 +514,15 @@ namespace ImpostersOrdeal
         {
             BattleTowerTrainerEditorForm tef = new();
             tef.Show();
-            gameData.SetModified(GameDataSet.DataField.Trainers);
+            gameData.SetModified(GameDataSet.DataField.BattleTowerTrainers);
         }
-        //Battle Tower Pokemon Button
-        /*   private void button35_Click(object sender, EventArgs e)
-           {
-               BattleTowerPokemonForm tef = new();
-               tef.Show();
-               gameData.SetModified(GameDataSet.DataField.Trainers);
-           }*/
 
+        //Battle Tower Pokemon Button
         private void Button35_Click_1(object sender, EventArgs e)
         {
             BattleTowerPokemonForm tef = new();
             tef.Show();
-            gameData.SetModified(GameDataSet.DataField.Trainers);
+            gameData.SetModified(GameDataSet.DataField.BattleTowerTrainerPokemons);
         }
     }
 }

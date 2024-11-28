@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ImpostersOrdeal
 {
-    public enum ZoneID
+    public enum ZoneID : int
     {
         C01 = 0,
         C01FS0101 = 1,

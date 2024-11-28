@@ -1,37 +1,49 @@
-﻿using YamlDotNet.Serialization;
+﻿using SharpYaml;
+using SharpYaml.Serialization;
 
 namespace ImpostersOrdeal
 {
     public abstract class MonoBehaviour
     {
-        [YamlMember(Alias = "m_ObjectHideFlags", ApplyNamingConventions = false)]
+        [YamlMember("m_ObjectHideFlags")]
         public int ObjectHideFlags { get; set; }
 
-        [YamlMember(Alias = "m_CorrespondingSourceObject", ApplyNamingConventions = false)]
+        [YamlMember("m_CorrespondingSourceObject")]
+        [YamlStyle(YamlStyle.Flow)]
         public UnityFile CorrespondingSourceObject { get; set; }
 
-        [YamlMember(Alias = "m_PrefabInstance", ApplyNamingConventions = false)]
+        [YamlMember("m_PrefabInstance")]
+        [YamlStyle(YamlStyle.Flow)]
         public UnityFile PrefabInstance { get; set; }
 
-        [YamlMember(Alias = "m_PrefabAsset", ApplyNamingConventions = false)]
+        [YamlMember("m_PrefabAsset")]
+        [YamlStyle(YamlStyle.Flow)]
         public UnityFile PrefabAsset { get; set; }
 
-        [YamlMember(Alias = "m_GameObject", ApplyNamingConventions = false)]
+        [YamlMember("m_GameObject")]
+        [YamlStyle(YamlStyle.Flow)]
         public UnityFile GameObject { get; set; }
 
-        [YamlMember(Alias = "m_Enabled", ApplyNamingConventions = false)]
+        [YamlMember("m_Enabled")]
         public int Enabled { get; set; }
 
-        [YamlMember(Alias = "m_EditorHideFlags", ApplyNamingConventions = false)]
+        [YamlMember("m_EditorHideFlags")]
         public int EditorHideFlags { get; set; }
 
-        [YamlMember(Alias = "m_Script", ApplyNamingConventions = false)]
+        [YamlMember("m_Script")]
+        [YamlStyle(YamlStyle.Flow)]
         public UnityFile Script { get; set; }
 
-        [YamlMember(Alias = "m_Name", ApplyNamingConventions = false)]
+        [YamlMember("m_Name")]
         public string Name { get; set; }
 
-        [YamlMember(Alias = "m_EditorClassIdentifier", ApplyNamingConventions = false)]
+        [YamlMember("m_EditorClassIdentifier")]
         public string EditorClassIdentifier { get; set; }
+    }
+
+    public class YamlMonoContainer
+    {
+        [YamlMember("MonoBehaviour")]
+        public MonoBehaviour MonoBehaviour { get; set; }
     }
 }

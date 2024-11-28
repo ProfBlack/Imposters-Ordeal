@@ -19,6 +19,7 @@ namespace ImpostersOrdeal
     static public class DataParser
     {
         static Dictionary<PathEnum, Task<List<AssetTypeValueField>>> monoBehaviourCollection;
+        static Dictionary<PathEnum, Task<List<YamlMonoContainer>>> yamlCollection;
 
         static AssetTypeTemplateField tagDataTemplate = null;
         static AssetTypeTemplateField attributeValueTemplate = null;
@@ -66,6 +67,48 @@ namespace ImpostersOrdeal
             Task.WaitAll(tasks.ToArray());
             //Hot damn! 4GB?? This has got to go.
             monoBehaviourCollection = null;
+            GC.Collect();
+        }
+
+        /// <summary>
+        ///  Parses all yaml files necessary for analysis and configuration.
+        /// </summary>
+        public static async void PrepareYAMLAnalysis()
+        {
+            LoadYAMLs();
+            List<Task> tasks = new()
+            {
+                //Task.Run(() => ParseNatures()),
+                //Task.Run(() => ParseEvScripts()),
+                //Task.Run(() => ParseAllMessageFiles()),
+                //Task.Run(() => ParseGrowthRates()),
+                //Task.Run(() => ParseItems()),
+                //Task.Run(() => ParsePickupItems()),
+                //Task.Run(() => ParseShopTables()),
+                //Task.Run(() => ParseMoves()),
+                //Task.Run(() => ParseTMs()),
+                //Task.Run(() => ParsePokemon()),
+                //Task.Run(() => ParseEncounterTablesYAML()),
+                //Task.Run(() => ParseTrainers()),
+                //Task.Run(() => ParseBattleTowerTrainers()),
+                //Task.Run(() => ParseUgTables()),
+                //Task.Run(() => ParseAbilities()),
+                //Task.Run(() => ParseTypings()),
+                //Task.Run(() => ParseTrainerTypes()),
+                //Task.Run(() => ParseBattleMasterDatas()),
+                //Task.Run(() => ParseMasterDatas()),
+                //Task.Run(() => ParsePersonalMasterDatas()),
+                //Task.Run(() => ParseUIMasterDatas()),
+                //Task.Run(() => ParseContestMasterDatas()),
+                //Task.Run(() => TryParseExternalStarters()),
+                //Task.Run(() => TryParseExternalHoneyTrees()),
+            };
+            ParseDamagaCategories();
+            ParseGlobalMetadata();
+            ParseDprBin();
+            ParseAudioData();
+            TryParseModArgs();
+            Task.WaitAll(tasks.ToArray());
             GC.Collect();
         }
 
@@ -119,10 +162,17 @@ namespace ImpostersOrdeal
         {
             monoBehaviourCollection = new();
             foreach (PathEnum pe in Enum.GetValues(typeof(PathEnum)))
-            {
-                if (pe != PathEnum.UNKNOWN)
-                    monoBehaviourCollection[pe] = Task.Run(() => fileManager.GetMonoBehaviours(pe));
-            }   
+                monoBehaviourCollection[pe] = Task.Run(() => fileManager.GetMonoBehaviours(pe));
+        }
+
+        /// <summary>
+        ///  Loads all yaml files asyncronously into yamlCollection.
+        /// </summary>
+        private static void LoadYAMLs()
+        {
+            yamlCollection = new();
+            foreach (PathEnum pe in Enum.GetValues(typeof(PathEnum)))
+                yamlCollection[pe] = Task.Run(() => fileManager.GetYAMLs(pe));
         }
 
         /// <summary>
@@ -2019,9 +2069,9 @@ namespace ImpostersOrdeal
                 CommitShopTables();
             if (gameData.IsModified(GameDataSet.DataField.Trainers))
                 CommitTrainers();
-            CommitBattleTowerPokemon();
-            CommitBattleTowerTrainers();
-            if (gameData.IsModified(GameDataSet.DataField.battleTowerTrainerPokemons))
+            if (gameData.IsModified(GameDataSet.DataField.BattleTowerTrainers))
+                CommitBattleTowerTrainers();
+            if (gameData.IsModified(GameDataSet.DataField.BattleTowerTrainerPokemons))
                 CommitBattleTowerPokemon();
             if (gameData.IsModified(GameDataSet.DataField.EncounterTableFiles))
                 CommitEncounterTables();
@@ -2061,6 +2111,57 @@ namespace ImpostersOrdeal
                 CommitExternalStarters();
             if (gameData.IsModified(GameDataSet.DataField.ExternalHoneyTrees))
                 CommitExternalHoneyTrees();
+        }
+
+        /// <summary>
+        ///  Commits all modified files to YAML and prepares them for exporting.
+        /// </summary>
+        public static void CommitChangesToYAML()
+        {
+            /*if (gameData.IsModified(GameDataSet.DataField.EvScripts))
+                CommitEvScriptsYAML();
+            if (gameData.IsModified(GameDataSet.DataField.PickupItems))
+                CommitPickupItemsYAML();
+            if (gameData.IsModified(GameDataSet.DataField.ShopTables))
+                CommitShopTablesYAML();
+            if (gameData.IsModified(GameDataSet.DataField.Trainers))
+                CommitTrainersYAML();
+            if (gameData.IsModified(GameDataSet.DataField.BattleTowerTrainers))
+                CommitBattleTowerTrainersYAML();
+            if (gameData.IsModified(GameDataSet.DataField.BattleTowerTrainerPokemons))
+                CommitBattleTowerPokemonYAML();*/
+            if (gameData.IsModified(GameDataSet.DataField.EncounterTableFiles))
+                CommitEncounterTablesYAML();
+            /*if (gameData.IsModified(GameDataSet.DataField.MessageFileSets))
+                CommitMessageFileSetsYAML();
+            if (gameData.IsModified(GameDataSet.DataField.UgAreas) ||
+            gameData.IsModified(GameDataSet.DataField.UgEncounterFiles) ||
+            gameData.IsModified(GameDataSet.DataField.UgEncounterLevelSets) ||
+            gameData.IsModified(GameDataSet.DataField.UgSpecialEncounters) ||
+            gameData.IsModified(GameDataSet.DataField.UgPokemonData))
+                CommitUgTablesYAML();
+            if (gameData.IsModified(GameDataSet.DataField.PersonalEntries))
+                CommitPokemonYAML();
+            if (gameData.IsModified(GameDataSet.DataField.Items))
+                CommitItemsYAML();
+            if (gameData.IsModified(GameDataSet.DataField.TMs))
+                CommitTMsYAML();
+            if (gameData.IsModified(GameDataSet.DataField.Moves))
+                CommitMovesYAML();
+            if (gameData.IsModified(GameDataSet.DataField.AudioData))
+                CommitAudioYAML();
+            if (gameData.IsModified(GameDataSet.DataField.GlobalMetadata))
+                CommitGlobalMetadataYAML();
+            if (gameData.IsModified(GameDataSet.DataField.UIMasterdatas))
+                CommitUIMasterdatasYAML();
+            if (gameData.IsModified(GameDataSet.DataField.AddPersonalTable))
+                CommitAddPersonalTableYAML();
+            if (gameData.IsModified(GameDataSet.DataField.MotionTimingData))
+                CommitMotionTimingDataYAML();
+            if (gameData.IsModified(GameDataSet.DataField.PokemonInfo))
+                CommitPokemonInfoYAML();
+            if (gameData.IsModified(GameDataSet.DataField.ContestResultMotion))
+                CommitContestMasterDatasYAML();*/
         }
 
         private static void CommitExternalHoneyTrees()
@@ -3483,6 +3584,115 @@ distributionTable
         }
 
         /// <summary>
+        ///  Updates loaded yaml with EncounterTables.
+        /// </summary>
+        private static void CommitEncounterTablesYAML()
+        {
+            List<YamlMonoContainer> monoBehaviours = fileManager.GetYAMLs(PathEnum.Gamesettings);
+            FieldEncountTable[] encounterTableMonoBehaviours = new FieldEncountTable[2]
+            {
+                monoBehaviours.Find(m => m.MonoBehaviour.Name == "FieldEncountTable_d").MonoBehaviour as FieldEncountTable,
+                monoBehaviours.Find(m => m.MonoBehaviour.Name == "FieldEncountTable_p").MonoBehaviour as FieldEncountTable,
+            };
+            
+            for (int encounterTableFileIdx = 0; encounterTableFileIdx < encounterTableMonoBehaviours.Length; encounterTableFileIdx++)
+            {
+                EncounterTableFile encounterTableFile = gameData.encounterTableFiles[encounterTableFileIdx];
+                encounterTableMonoBehaviours[encounterTableFileIdx].Name = encounterTableFile.mName;
+
+                //Write wild encounter tables
+                var table = encounterTableMonoBehaviours[encounterTableFileIdx].Table;
+                for (int encounterTableIdx = 0; encounterTableIdx < table.Length; encounterTableIdx++)
+                {
+                    EncounterTable encounterTable = encounterTableFile.encounterTables[encounterTableIdx];
+                    table[encounterTableIdx].ZoneID = (int)encounterTable.zoneID;
+                    table[encounterTableIdx].EncRateGr = encounterTable.encRateGround;
+                    table[encounterTableIdx].FormProb[0] = encounterTable.formProb;
+                    table[encounterTableIdx].AnnoonTable[1] = encounterTable.unownTable;
+                    table[encounterTableIdx].EncRateWat = encounterTable.encRateWater;
+                    table[encounterTableIdx].EncRateTuriBoro = encounterTable.encRateOldRod;
+                    table[encounterTableIdx].EncRateTuriIi = encounterTable.encRateGoodRod;
+                    table[encounterTableIdx].EncRateSugoi = encounterTable.encRateSuperRod;
+
+                    //Write ground tables
+                    table[encounterTableIdx].GroundMons = ConvertEncountersToMonsLv(encounterTable.groundMons);
+
+                    //Write morning tables
+                    table[encounterTableIdx].Tairyo = ConvertEncountersToMonsLv(encounterTable.tairyo);
+
+                    //Write day tables
+                    table[encounterTableIdx].Day = ConvertEncountersToMonsLv(encounterTable.day);
+
+                    //Write night tables
+                    table[encounterTableIdx].Night = ConvertEncountersToMonsLv(encounterTable.night);
+
+                    //Write pokefinder tables
+                    table[encounterTableIdx].SwayGrass = ConvertEncountersToMonsLv(encounterTable.swayGrass);
+
+                    //Write ruby tables
+                    table[encounterTableIdx].GBARuby = ConvertEncountersToMonsLv(encounterTable.gbaRuby);
+
+                    //Write sapphire tables
+                    table[encounterTableIdx].GBASapp = ConvertEncountersToMonsLv(encounterTable.gbaSapphire);
+
+                    //Write emerald tables
+                    table[encounterTableIdx].GBAEme = ConvertEncountersToMonsLv(encounterTable.gbaEmerald);
+
+                    //Write fire tables
+                    table[encounterTableIdx].GBAFire = ConvertEncountersToMonsLv(encounterTable.gbaFire);
+
+                    //Write leaf tables
+                    table[encounterTableIdx].GBALeaf = ConvertEncountersToMonsLv(encounterTable.gbaLeaf);
+
+                    //Write surfing tables
+                    table[encounterTableIdx].WaterMons = ConvertEncountersToMonsLv(encounterTable.waterMons);
+
+                    //Write old rod tables
+                    table[encounterTableIdx].BoroMons = ConvertEncountersToMonsLv(encounterTable.oldRodMons);
+
+                    //Write good rod tables
+                    table[encounterTableIdx].IiMons = ConvertEncountersToMonsLv(encounterTable.goodRodMons);
+
+                    //Write super rod tables
+                    table[encounterTableIdx].SugoiMons = ConvertEncountersToMonsLv(encounterTable.superRodMons);
+                }
+
+                //Write trophy garden table
+                encounterTableMonoBehaviours[encounterTableFileIdx].Urayama = new Sheeturayama[encounterTableFile.trophyGardenMons.Count];
+                for (int trophyGardenMonIdx = 0; trophyGardenMonIdx < encounterTableMonoBehaviours[encounterTableFileIdx].Urayama.Length; trophyGardenMonIdx++)
+                {
+                    encounterTableMonoBehaviours[encounterTableFileIdx].Urayama[trophyGardenMonIdx] = new()
+                    {
+                        MonsNo = encounterTableFile.trophyGardenMons[trophyGardenMonIdx]
+                    };
+                }
+
+                //Write honey tree tables (not actually honey trees?)
+                encounterTableMonoBehaviours[encounterTableFileIdx].Mistu = new Sheetmistu[encounterTableFile.honeyTreeEnconters.Count];
+                for (int honeyTreeEncounterIdx = 0; honeyTreeEncounterIdx < encounterTableMonoBehaviours[encounterTableFileIdx].HoneyTree.Length; honeyTreeEncounterIdx++)
+                {
+                    encounterTableMonoBehaviours[encounterTableFileIdx].Mistu[honeyTreeEncounterIdx] = new()
+                    {
+                        Rate = encounterTableFile.honeyTreeEnconters[honeyTreeEncounterIdx].rate,
+                        Normal = encounterTableFile.honeyTreeEnconters[honeyTreeEncounterIdx].normalDexID,
+                        Rare = encounterTableFile.honeyTreeEnconters[honeyTreeEncounterIdx].rareDexID,
+                        SuperRare = encounterTableFile.honeyTreeEnconters[honeyTreeEncounterIdx].superRareDexID,
+                    };
+                }
+
+                //Write safari table
+                encounterTableMonoBehaviours[encounterTableFileIdx].Safari = new Sheetsafari[encounterTableFile.safariMons.Count];
+                for (int safariMonIdx = 0; safariMonIdx < encounterTableMonoBehaviours[encounterTableFileIdx].Safari.Length; safariMonIdx++)
+                {
+                    encounterTableMonoBehaviours[encounterTableFileIdx].Urayama[safariMonIdx] = new()
+                    {
+                        MonsNo = encounterTableFile.safariMons[safariMonIdx]
+                    };
+                }
+            }
+        }
+
+        /// <summary>
         ///  Converts a List of Encounters into a AssetTypeValueField array.
         /// </summary>
         private static void SetEncounters(AssetTypeValueField encounterSetAtvf, List<Encounter> encounters)
@@ -3499,6 +3709,25 @@ distributionTable
             }
             AssetTypeValueField martItemReference = encounterSetAtvf.children[0];
             encounterSetAtvf.SetChildrenList(GetATVFs(martItemReference, encounterAtvs));
+        }
+
+        /// <summary>
+        ///  Converts a List of Encounters into an array of MonsLv.
+        /// </summary>
+        private static MonsLv[] ConvertEncountersToMonsLv(List<Encounter> encounters)
+        {
+            MonsLv[] monsLv = new MonsLv[encounters.Count];
+            for (int encounterIdx = 0; encounterIdx < monsLv.Length; encounterIdx++)
+            {
+                monsLv[encounterIdx] = new()
+                {
+                    MaxLv = encounters[encounterIdx].maxLv,
+                    MinLv = encounters[encounterIdx].minLv,
+                    MonsNo = encounters[encounterIdx].dexID,
+                };
+            }
+
+            return monsLv;
         }
 
         /// <summary>

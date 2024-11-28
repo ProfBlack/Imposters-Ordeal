@@ -1,208 +1,208 @@
 ﻿using System.Collections.Generic;
 using System.Drawing;
 using System.Numerics;
-using YamlDotNet.Serialization;
+using SharpYaml.Serialization;
 
 namespace ImpostersOrdeal
 {
     public class EventCameraData : MonoBehaviour
     {
-        [YamlMember(Alias = "baseTime", ApplyNamingConventions = false)]
+        [YamlMember("baseTime")]
         public float BaseTime { get; set; }
 
-        [YamlMember(Alias = "timeScale", ApplyNamingConventions = false)]
+        [YamlMember("timeScale")]
         public float TimeScale { get; set; }
 
-        [YamlMember(Alias = "length", ApplyNamingConventions = false)]
+        [YamlMember("length")]
         public int length { get; set; }
 
-        [YamlMember(Alias = "type", ApplyNamingConventions = false)]
+        [YamlMember("type")]
         public List<int> Type { get; set; }
 
-        [YamlMember(Alias = "isEnd", ApplyNamingConventions = false)]
+        [YamlMember("isEnd")]
         public List<bool> IsEnd { get; set; }
 
-        [YamlMember(Alias = "startTime", ApplyNamingConventions = false)]
+        [YamlMember("startTime")]
         public List<float> StartTime { get; set; }
 
-        [YamlMember(Alias = "fadeData", ApplyNamingConventions = false)]
+        [YamlMember("fadeData")]
         public List<FadeData> FadeData { get; set; }
 
-        [YamlMember(Alias = "pathData", ApplyNamingConventions = false)]
+        [YamlMember("pathData")]
         public List<PathData> PathData { get; set; }
 
-        [YamlMember(Alias = "dofData", ApplyNamingConventions = false)]
+        [YamlMember("dofData")]
         public List<DofData> DofData { get; set; }
 
-        [YamlMember(Alias = "pathData2", ApplyNamingConventions = false)]
+        [YamlMember("pathData2")]
         public List<PathData2> PathData2 { get; set; }
 
-        [YamlMember(Alias = "rotationData", ApplyNamingConventions = false)]
+        [YamlMember("rotationData")]
         public List<RotationData> RotationData { get; set; }
 
-        [YamlMember(Alias = "returnDefault", ApplyNamingConventions = false)]
+        [YamlMember("returnDefault")]
         public List<ReturnDefault> ReturnDefault { get; set; }
 
-        [YamlMember(Alias = "returnDefaultRotate", ApplyNamingConventions = false)]
+        [YamlMember("returnDefaultRotate")]
         public List<ReturnDefault> ReturnDefaultRotate { get; set; }
 
-        [YamlMember(Alias = "fovData", ApplyNamingConventions = false)]
+        [YamlMember("fovData")]
         public List<FovData> FovData { get; set; }
     }
 
     public class ReturnDefault
     {
-        [YamlMember(Alias = "curveIndex", ApplyNamingConventions = false)]
+        [YamlMember("curveIndex")]
         public int CurveIndex { get; set; }
 
-        [YamlMember(Alias = "workTime", ApplyNamingConventions = false)]
+        [YamlMember("workTime")]
         public float WorkTime { get; set; }
 
-        [YamlMember(Alias = "workTimeScale", ApplyNamingConventions = false)]
+        [YamlMember("workTimeScale")]
         public float WorkTimeScale { get; set; }
     }
 
     public class RotationData
     {
-        [YamlMember(Alias = "curveIndex", ApplyNamingConventions = false)]
+        [YamlMember("curveIndex")]
         public int CurveIndex { get; set; }
 
-        [YamlMember(Alias = "workTime", ApplyNamingConventions = false)]
+        [YamlMember("workTime")]
         public float WorkTime { get; set; }
 
-        [YamlMember(Alias = "workTimeScale", ApplyNamingConventions = false)]
+        [YamlMember("workTimeScale")]
         public float WorkTimeScale { get; set; }
 
-        [YamlMember(Alias = "isDefaultRotate", ApplyNamingConventions = false)]
+        [YamlMember("isDefaultRotate")]
         public bool IsDefaultRotate { get; set; }
 
-        [YamlMember(Alias = "Angle1", ApplyNamingConventions = false)]
+        [YamlMember("Angle1")]
         public Vector3 Angle1 { get; set; }
 
-        [YamlMember(Alias = "Angle2", ApplyNamingConventions = false)]
+        [YamlMember("Angle2")]
         public Vector3 Angle2 { get; set; }
     }
 
     public class PathData2
     {
-        [YamlMember(Alias = "curveIndex", ApplyNamingConventions = false)]
+        [YamlMember("curveIndex")]
         public int CurveIndex { get; set; }
 
-        [YamlMember(Alias = "workTime", ApplyNamingConventions = false)]
+        [YamlMember("workTime")]
         public float WorkTime { get; set; }
 
-        [YamlMember(Alias = "workTimeScale", ApplyNamingConventions = false)]
+        [YamlMember("workTimeScale")]
         public float WorkTimeScale { get; set; }
 
-        [YamlMember(Alias = "vTypeStart", ApplyNamingConventions = false)]
+        [YamlMember("vTypeStart")]
         public int VTypeStart { get; set; }
 
-        [YamlMember(Alias = "vTypeEnd", ApplyNamingConventions = false)]
+        [YamlMember("vTypeEnd")]
         public int VTypeEnd { get; set; }
 
-        [YamlMember(Alias = "Pos1", ApplyNamingConventions = false)]
+        [YamlMember("Pos1")]
         public Vector3 Pos1 { get; set; }
 
-        [YamlMember(Alias = "Pos2", ApplyNamingConventions = false)]
+        [YamlMember("Pos2")]
         public Vector3 Pos2 { get; set; }
 
-        [YamlMember(Alias = "Pos3", ApplyNamingConventions = false)]
+        [YamlMember("Pos3")]
         public Vector3 Pos3 { get; set; }
     }
 
     public class PathData
     {
-        [YamlMember(Alias = "workTime", ApplyNamingConventions = false)]
+        [YamlMember("workTime")]
         public float WorkTime { get; set; }
 
-        [YamlMember(Alias = "workTimeScale", ApplyNamingConventions = false)]
+        [YamlMember("workTimeScale")]
         public float WorkTimeScale { get; set; }
 
-        [YamlMember(Alias = "vTypeStart", ApplyNamingConventions = false)]
+        [YamlMember("vTypeStart")]
         public int VTypeStart { get; set; }
 
-        [YamlMember(Alias = "vTypeEnd", ApplyNamingConventions = false)]
+        [YamlMember("vTypeEnd")]
         public int VTypeEnd { get; set; }
 
-        [YamlMember(Alias = "startPosition", ApplyNamingConventions = false)]
+        [YamlMember("startPosition")]
         public Vector3 StartPosition { get; set; }
 
-        [YamlMember(Alias = "Vectol", ApplyNamingConventions = false)]
+        [YamlMember("Vectol")]
         public Vector3 Vectol { get; set; }
 
-        [YamlMember(Alias = "endPosition", ApplyNamingConventions = false)]
+        [YamlMember("endPosition")]
         public Vector3 EndPosition { get; set; }
 
-        [YamlMember(Alias = "isDefaultRotate", ApplyNamingConventions = false)]
+        [YamlMember("isDefaultRotate")]
         public bool IsDefaultRotate { get; set; }
 
-        [YamlMember(Alias = "startRotation", ApplyNamingConventions = false)]
+        [YamlMember("startRotation")]
         public Vector3 StartRotation { get; set; }
 
-        [YamlMember(Alias = "endRotation", ApplyNamingConventions = false)]
+        [YamlMember("endRotation")]
         public Vector3 EndRotation { get; set; }
     }
 
     public class FadeData
     {
-        [YamlMember(Alias = "type", ApplyNamingConventions = false)]
+        [YamlMember("type")]
         public int Type { get; set; }
 
-        [YamlMember(Alias = "color", ApplyNamingConventions = false)]
+        [YamlMember("color")]
         public Color Color { get; set; }
 
-        [YamlMember(Alias = "duration", ApplyNamingConventions = false)]
+        [YamlMember("duration")]
         public float Duration { get; set; }
     }
 
     public class DofData
     {
-        [YamlMember(Alias = "workTime", ApplyNamingConventions = false)]
+        [YamlMember("workTime")]
         public float WorkTime { get; set; }
 
-        [YamlMember(Alias = "workTimeScale", ApplyNamingConventions = false)]
+        [YamlMember("workTimeScale")]
         public float WorkTimeScale { get; set; }
 
-        [YamlMember(Alias = "use", ApplyNamingConventions = false)]
+        [YamlMember("use")]
         public bool[] Use { get; set; }
 
-        [YamlMember(Alias = "typeStart", ApplyNamingConventions = false)]
+        [YamlMember("typeStart")]
         public int[] TypeStart { get; set; }
 
-        [YamlMember(Alias = "typeEnd", ApplyNamingConventions = false)]
+        [YamlMember("typeEnd")]
         public int[] TypeEnd { get; set; }
 
-        [YamlMember(Alias = "valStart", ApplyNamingConventions = false)]
+        [YamlMember("valStart")]
         public float[] ValStart { get; set; }
 
-        [YamlMember(Alias = "valEnd", ApplyNamingConventions = false)]
+        [YamlMember("valEnd")]
         public float[] ValEnd { get; set; }
 
-        [YamlMember(Alias = "targetOffset", ApplyNamingConventions = false)]
+        [YamlMember("targetOffset")]
         public Vector3 TargetOffset { get; set; }
     }
 
     public class FovData
     {
-        [YamlMember(Alias = "curveIndex", ApplyNamingConventions = false)]
+        [YamlMember("curveIndex")]
         public int CurveIndex { get; set; }
 
-        [YamlMember(Alias = "workTime", ApplyNamingConventions = false)]
+        [YamlMember("workTime")]
         public float WorkTime { get; set; }
 
-        [YamlMember(Alias = "workTimeScale", ApplyNamingConventions = false)]
+        [YamlMember("workTimeScale")]
         public float WorkTimeScale { get; set; }
 
-        [YamlMember(Alias = "field_of_view_start", ApplyNamingConventions = false)]
+        [YamlMember("field_of_view_start")]
         public float FieldOfViewStart { get; set; }
 
-        [YamlMember(Alias = "field_of_view", ApplyNamingConventions = false)]
+        [YamlMember("field_of_view")]
         public float FieldOfView { get; set; }
 
-        [YamlMember(Alias = "is_default_start", ApplyNamingConventions = false)]
+        [YamlMember("is_default_start")]
         public bool IsDefaultStart { get; set; }
 
-        [YamlMember(Alias = "is_default_end", ApplyNamingConventions = false)]
+        [YamlMember("is_default_end")]
         public bool IsDefaultEnd { get; set; }
     }
 }

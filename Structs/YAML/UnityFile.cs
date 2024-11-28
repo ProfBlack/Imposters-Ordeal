@@ -6,14 +6,14 @@ namespace ImpostersOrdeal
 {
     public class UnityFile
     {
-        [YamlMember("fileID")]
+        [YamlMember("fileID", 0)]
         public long FileID { get; set; }
 
-        [YamlMember("guid")]
-        [DefaultValue("")]
-        public string GUID { get; set; }
+        [YamlMember("guid", 1)]
+        [DefaultValue(0)]
+        public Guid GUID { get; set; }
 
-        [YamlMember("type")]
+        [YamlMember("type", 2)]
         [DefaultValue(0)]
         public int Type { get; set; }
     }

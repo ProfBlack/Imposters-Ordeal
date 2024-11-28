@@ -6,6 +6,7 @@ using System.Text;
 using static ImpostersOrdeal.GameDataTypes;
 using static ImpostersOrdeal.ExternalJsonStructs;
 using SmartPoint.AssetAssistant;
+using System.IO;
 
 namespace ImpostersOrdeal
 {
@@ -170,6 +171,7 @@ namespace ImpostersOrdeal
 
         public static FileManager fileManager;
         public static Dictionary<PathEnum, string> randomizerPaths = new();
+        public static Dictionary<string, PathEnum> yamlAssetPaths = new();
         public static GameDataSet gameData;
         public static DataTable absoluteBoundaries = new();
 
@@ -252,25 +254,29 @@ namespace ImpostersOrdeal
 
         public static void Initialize()
         {
-            randomizerPaths[PathEnum.BattleMasterdatas] = "romfs\\Data\\StreamingAssets\\AssetAssistant\\Battle\\battle_masterdatas";
-            randomizerPaths[PathEnum.ContestMasterdatas] = "romfs\\Data\\StreamingAssets\\AssetAssistant\\Contest\\md\\contest_masterdatas";
-            randomizerPaths[PathEnum.EvScript] = "romfs\\Data\\StreamingAssets\\AssetAssistant\\Dpr\\ev_script";
-            randomizerPaths[PathEnum.DprMasterdatas] = "romfs\\Data\\StreamingAssets\\AssetAssistant\\Dpr\\masterdatas";
-            randomizerPaths[PathEnum.Gamesettings] = "romfs\\Data\\StreamingAssets\\AssetAssistant\\Dpr\\scriptableobjects\\gamesettings";
-            randomizerPaths[PathEnum.CommonMsbt] = "romfs\\Data\\StreamingAssets\\AssetAssistant\\Message\\common_msbt";
-            randomizerPaths[PathEnum.English] = "romfs\\Data\\StreamingAssets\\AssetAssistant\\Message\\english";
-            randomizerPaths[PathEnum.French] = "romfs\\Data\\StreamingAssets\\AssetAssistant\\Message\\french";
-            randomizerPaths[PathEnum.German] = "romfs\\Data\\StreamingAssets\\AssetAssistant\\Message\\german";
-            randomizerPaths[PathEnum.Italian] = "romfs\\Data\\StreamingAssets\\AssetAssistant\\Message\\italian";
-            randomizerPaths[PathEnum.Jpn] = "romfs\\Data\\StreamingAssets\\AssetAssistant\\Message\\jpn";
-            randomizerPaths[PathEnum.JpnKanji] = "romfs\\Data\\StreamingAssets\\AssetAssistant\\Message\\jpn_kanji";
-            randomizerPaths[PathEnum.Korean] = "romfs\\Data\\StreamingAssets\\AssetAssistant\\Message\\korean";
-            randomizerPaths[PathEnum.SimpChinese] = "romfs\\Data\\StreamingAssets\\AssetAssistant\\Message\\simp_chinese";
-            randomizerPaths[PathEnum.Spanish] = "romfs\\Data\\StreamingAssets\\AssetAssistant\\Message\\spanish";
-            randomizerPaths[PathEnum.TradChinese] = "romfs\\Data\\StreamingAssets\\AssetAssistant\\Message\\trad_chinese";
-            randomizerPaths[PathEnum.PersonalMasterdatas] = "romfs\\Data\\StreamingAssets\\AssetAssistant\\Pml\\personal_masterdatas";
-            randomizerPaths[PathEnum.UIMasterdatas] = "romfs\\Data\\StreamingAssets\\AssetAssistant\\UIs\\masterdatas\\uimasterdatas";
-            randomizerPaths[PathEnum.Ugdata] = "romfs\\Data\\StreamingAssets\\AssetAssistant\\UnderGround\\data\\ugdata";
+            randomizerPaths[PathEnum.BattleMasterdatas] =   Path.Combine("romfs", "Data", "StreamingAssets", "AssetAssistant", "Battle", "battle_masterdatas");
+            randomizerPaths[PathEnum.ContestMasterdatas] =  Path.Combine("romfs", "Data", "StreamingAssets", "AssetAssistant", "Contest", "md", "contest_masterdatas");
+            randomizerPaths[PathEnum.EvScript] =            Path.Combine("romfs", "Data", "StreamingAssets", "AssetAssistant", "Dpr", "ev_script");
+            randomizerPaths[PathEnum.DprMasterdatas] =      Path.Combine("romfs", "Data", "StreamingAssets", "AssetAssistant", "Dpr", "masterdatas");
+            randomizerPaths[PathEnum.Gamesettings] =        Path.Combine("romfs", "Data", "StreamingAssets", "AssetAssistant", "Dpr", "scriptableobjects", "gamesettings");
+            randomizerPaths[PathEnum.CommonMsbt] =          Path.Combine("romfs", "Data", "StreamingAssets", "AssetAssistant", "Message", "common_msbt");
+            randomizerPaths[PathEnum.English] =             Path.Combine("romfs", "Data", "StreamingAssets", "AssetAssistant", "Message", "english");
+            randomizerPaths[PathEnum.French] =              Path.Combine("romfs", "Data", "StreamingAssets", "AssetAssistant", "Message", "french");
+            randomizerPaths[PathEnum.German] =              Path.Combine("romfs", "Data", "StreamingAssets", "AssetAssistant", "Message", "german");
+            randomizerPaths[PathEnum.Italian] =             Path.Combine("romfs", "Data", "StreamingAssets", "AssetAssistant", "Message", "italian");
+            randomizerPaths[PathEnum.Jpn] =                 Path.Combine("romfs", "Data", "StreamingAssets", "AssetAssistant", "Message", "jpn");
+            randomizerPaths[PathEnum.JpnKanji] =            Path.Combine("romfs", "Data", "StreamingAssets", "AssetAssistant", "Message", "jpn_kanji");
+            randomizerPaths[PathEnum.Korean] =              Path.Combine("romfs", "Data", "StreamingAssets", "AssetAssistant", "Message", "korean");
+            randomizerPaths[PathEnum.SimpChinese] =         Path.Combine("romfs", "Data", "StreamingAssets", "AssetAssistant", "Message", "simp_chinese");
+            randomizerPaths[PathEnum.Spanish] =             Path.Combine("romfs", "Data", "StreamingAssets", "AssetAssistant", "Message", "spanish");
+            randomizerPaths[PathEnum.TradChinese] =         Path.Combine("romfs", "Data", "StreamingAssets", "AssetAssistant", "Message", "trad_chinese");
+            randomizerPaths[PathEnum.PersonalMasterdatas] = Path.Combine("romfs", "Data", "StreamingAssets", "AssetAssistant", "Pml", "personal_masterdatas");
+            randomizerPaths[PathEnum.UIMasterdatas] =       Path.Combine("romfs", "Data", "StreamingAssets", "AssetAssistant", "UIs", "masterdatas", "uimasterdatas");
+            randomizerPaths[PathEnum.Ugdata] =              Path.Combine("romfs", "Data", "StreamingAssets", "AssetAssistant", "UnderGround", "data", "ugdata");
+
+            //yamlAssetPaths­["scriptableobjects"]                             = PathEnum.Gamesettings;
+            yamlAssetPaths­[Path.Combine("scriptableobjects", "fieldencount")] = PathEnum.Gamesettings;
+
             DataColumn[] columns = { new DataColumn("Value", typeof(string)), new DataColumn("Minimum", typeof(int)), new DataColumn("Maximum", typeof(int)), new DataColumn("Increment", typeof(int)) };
             absoluteBoundaries.Columns.AddRange(columns);
             columns[0].ReadOnly = true;

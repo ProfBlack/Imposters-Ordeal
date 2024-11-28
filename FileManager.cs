@@ -12,6 +12,8 @@ using System.Text;
 using Newtonsoft.Json;
 using SharpYaml.Serialization;
 using System.Reflection.Metadata;
+using ImpostersOrdeal.Structs.YAML;
+using System.Xml.Linq;
 
 namespace ImpostersOrdeal
 {
@@ -60,16 +62,21 @@ namespace ImpostersOrdeal
         private AssetsManager am = new();
         private int fileIndex = 0;
 
-        private SharpYaml.Serialization.Serializer serializer;
-        private SharpYaml.Serialization.Serializer Serializer
+        private static SharpYaml.Serialization.Serializer serializer;
+        private static SharpYaml.Serialization.Serializer Serializer
         {
             get
             {
                 if (serializer == null)
                 {
-                    serializer = new SharpYaml.Serialization.Serializer();
-                    serializer.Settings.SortKeyForMapping = false;
-                    serializer.Settings.ComparerForKeySorting = null;
+                    var settings = new SerializerSettings
+                    {
+                        SortKeyForMapping = false,
+                        IgnoreNulls = true,
+                        EmitAlias = false,
+                    };
+                    settings.RegisterSerializer(typeof(UnityFile), new UnityFileSerializer());
+                    serializer = new SharpYaml.Serialization.Serializer(settings);
                 }
 
                 return serializer;
@@ -97,11 +104,28 @@ namespace ImpostersOrdeal
             public string unityPrefix;
             public PathEnum bundleOrigin;
             public bool tempLocation;
+            public bool unknownMono;
             public YamlMonoContainer loadedData;
 
             public bool IsLoaded()
             {
                 return loadedData != null && loadedData.MonoBehaviour != null;
+            }
+
+            public YamlMonoContainer GetLoadedData()
+            {
+                if (IsLoaded() || unknownMono)
+                    return loadedData;
+
+                var yamlLines = File.ReadAllLines(fileLocation);
+                string yaml = string.Join("\n", yamlLines.Skip(4));
+                unityPrefix = string.Join("\n", yamlLines.Take(3)) + "\n";
+
+                var mono = new YamlMonoContainer() { MonoBehaviour = FromYAML(bundleOrigin, yaml) };
+                loadedData = mono;
+                unknownMono = mono.MonoBehaviour == null;
+
+                return mono;
             }
         }
 
@@ -365,9 +389,7 @@ namespace ImpostersOrdeal
                 string gamePath = modFilePaths[fileIdx].Substring(assetsPath.Length + 1, modFilePaths[fileIdx].Length - assetsPath.Length - 1);
                 if (!yamlArchive.ContainsKey(gamePath))
                 {
-                    //string metaYaml = File.ReadAllText(modFilePaths[fileIdx] + ".meta");
-                    var bundleOrigin = FindPathEnumForYAML(/*FromYaml<MetaAsset>(metaYaml).NativeFormatImporter.AssetBundleName*/null, gamePath);
-
+                    var bundleOrigin = FindPathEnumForYAML(gamePath);
                     if (bundleOrigin.HasValue)
                         yamlArchive[gamePath] = GenerateFileDataFromYAMLFile(modFilePaths[fileIdx], gamePath, bundleOrigin.Value);
                 } 
@@ -386,6 +408,7 @@ namespace ImpostersOrdeal
             fd.assetPath = assetPath;
             fd.tempLocation = false;
             fd.bundleOrigin = origin;
+            fd.unknownMono = false;
 
             return fd;
         }
@@ -530,16 +553,7 @@ namespace ImpostersOrdeal
         public List<YamlMonoContainer> GetYAMLs(PathEnum pathEnum)
         {
             return yamlArchive.Where(y => y.Value.bundleOrigin == pathEnum)
-                .Select(y =>
-                {
-                    var yamlLines = File.ReadAllLines(y.Value.fileLocation);
-                    string yaml = string.Join("\n", yamlLines.Skip(4));
-                    y.Value.unityPrefix = string.Join("\n", yamlLines.Take(3)) + "\n";
-
-                    var mono = new YamlMonoContainer() { MonoBehaviour = FromYAML(pathEnum, yaml) };
-                    y.Value.loadedData = mono;
-                    return mono;
-                })
+                .Select(y => y.Value.GetLoadedData())
                 .ToList();
         }
 
@@ -1043,7 +1057,7 @@ namespace ImpostersOrdeal
         /// </summary>
         private static bool IsGameDirectory(string path, bool needRomfs = false)
         {
-            return Directory.Exists(path + "\\romfs") || Directory.Exists(path + "\\exefs") && !needRomfs;
+            return Directory.Exists(Path.Combine(path, "romfs")) || Directory.Exists(Path.Combine(path, "exefs")) && !needRomfs;
         }
 
         /// <summary>
@@ -1051,35 +1065,25 @@ namespace ImpostersOrdeal
         /// </summary>
         private static bool IsUnityDirectory(string path)
         {
-            return Directory.Exists(path + "\\Assets");
+            return Directory.Exists(Path.Combine(path, "Assets"));
         }
 
         /// <summary>
         ///  Finds what path in the PathEnum a yaml file is for.
         /// </summary>
-        private static PathEnum? FindPathEnumForYAML(string bundleName, string assetPath)
+        private static PathEnum? FindPathEnumForYAML(string assetPath)
         {
-            if (!string.IsNullOrEmpty(bundleName))
-            {
-                switch (bundleName)
-                {
-                    case "ev_script": return PathEnum.EvScript;
-                    case "scriptableobjects/gamesettings": return PathEnum.Gamesettings;
-                }
-            }
-
-            return assetPath switch
-            {
-                { } when assetPath.StartsWith("scriptableobjects")            => PathEnum.Gamesettings,
-                { } when assetPath.StartsWith("scriptableobjects/attributes") => PathEnum.Gamesettings,
-                _ => null,
-            };
+            string directory = Path.GetDirectoryName(assetPath);
+            if (yamlAssetPaths.ContainsKey(directory))
+                return yamlAssetPaths[directory];
+            else
+                return null;
         }
 
         /// <summary>
         ///  Deserializes a yaml string to a known MonoBehaviour.
         /// </summary>
-        private MonoBehaviour FromYAML(PathEnum pathEnum, string yaml)
+        private static MonoBehaviour FromYAML(PathEnum pathEnum, string yaml)
         {
             switch (pathEnum)
             {
@@ -1098,7 +1102,7 @@ namespace ImpostersOrdeal
         /// <summary>
         ///  Deserializes a yaml string to the given type.
         /// </summary>
-        private T FromYaml<T>(string yaml) where T : class
+        private static T FromYaml<T>(string yaml) where T : class
         {
             try
             {

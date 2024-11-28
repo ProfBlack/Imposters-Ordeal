@@ -88,7 +88,7 @@ namespace ImpostersOrdeal
                 //Task.Run(() => ParseMoves()),
                 //Task.Run(() => ParseTMs()),
                 //Task.Run(() => ParsePokemon()),
-                //Task.Run(() => ParseEncounterTablesYAML()),
+                Task.Run(() => ParseEncounterTablesYAML()),
                 //Task.Run(() => ParseTrainers()),
                 //Task.Run(() => ParseBattleTowerTrainers()),
                 //Task.Run(() => ParseUgTables()),
@@ -734,6 +734,117 @@ namespace ImpostersOrdeal
         }
 
         /// <summary>
+        ///  Overwrites GlobalData with parsed yaml EncounterTables.
+        /// </summary>
+        private static async Task ParseEncounterTablesYAML()
+        {
+            gameData.encounterTableFiles = new EncounterTableFile[2];
+
+            List<YamlMonoContainer> monoBehaviours = await yamlCollection[PathEnum.Gamesettings];
+            FieldEncountTable[] encounterTableMonoBehaviours = new FieldEncountTable[2]
+            {
+                monoBehaviours.Find(m => m.MonoBehaviour.Name == "FieldEncountTable_d").MonoBehaviour as FieldEncountTable,
+                monoBehaviours.Find(m => m.MonoBehaviour.Name == "FieldEncountTable_p").MonoBehaviour as FieldEncountTable,
+            };
+
+            for (int encounterTableFileIdx = 0; encounterTableFileIdx < encounterTableMonoBehaviours.Length; encounterTableFileIdx++)
+            {
+                EncounterTableFile encounterTableFile = new();
+                encounterTableFile.mName = encounterTableMonoBehaviours[encounterTableFileIdx].Name;
+
+                //Parse wild encounter tables
+                encounterTableFile.encounterTables = new();
+                var table = encounterTableMonoBehaviours[encounterTableFileIdx].Table;
+                for (int encounterTableIdx = 0; encounterTableIdx < table.Length; encounterTableIdx++)
+                {
+                    EncounterTable encounterTable = new();
+                    encounterTable.zoneID = (ZoneID)table[encounterTableIdx].ZoneID;
+                    encounterTable.encRateGround = table[encounterTableIdx].EncRateGr;
+                    encounterTable.formProb = table[encounterTableIdx].FormProb[0];
+                    encounterTable.unownTable = table[encounterTableIdx].AnnoonTable[1];
+                    encounterTable.encRateWater = table[encounterTableIdx].EncRateWat;
+                    encounterTable.encRateOldRod = table[encounterTableIdx].EncRateTuriBoro;
+                    encounterTable.encRateGoodRod = table[encounterTableIdx].EncRateTuriIi;
+                    encounterTable.encRateSuperRod = table[encounterTableIdx].EncRateSugoi;
+
+                    //Parse ground tables
+                    encounterTable.groundMons = ConvertMonsLvToEncounters(table[encounterTableIdx].GroundMons);
+
+                    //Parse morning tables
+                    encounterTable.tairyo = ConvertMonsLvToEncounters(table[encounterTableIdx].Tairyo);
+
+                    //Parse day tables
+                    encounterTable.day = ConvertMonsLvToEncounters(table[encounterTableIdx].Day);
+
+                    //Parse night tables
+                    encounterTable.night = ConvertMonsLvToEncounters(table[encounterTableIdx].Night);
+
+                    //Parse pokefinder tables
+                    encounterTable.swayGrass = ConvertMonsLvToEncounters(table[encounterTableIdx].SwayGrass);
+
+                    //Parse ruby tables
+                    encounterTable.gbaRuby = ConvertMonsLvToEncounters(table[encounterTableIdx].GBARuby);
+
+                    //Parse sapphire tables
+                    encounterTable.gbaSapphire = ConvertMonsLvToEncounters(table[encounterTableIdx].GBASapp);
+
+                    //Parse emerald tables
+                    encounterTable.gbaEmerald = ConvertMonsLvToEncounters(table[encounterTableIdx].GBAEme);
+
+                    //Parse fire tables
+                    encounterTable.gbaFire = ConvertMonsLvToEncounters(table[encounterTableIdx].GBAFire);
+
+                    //Parse leaf tables
+                    encounterTable.gbaLeaf = ConvertMonsLvToEncounters(table[encounterTableIdx].GBALeaf);
+
+                    //Parse surfing tables
+                    encounterTable.waterMons = ConvertMonsLvToEncounters(table[encounterTableIdx].WaterMons);
+
+                    //Parse old rod tables
+                    encounterTable.oldRodMons = ConvertMonsLvToEncounters(table[encounterTableIdx].BoroMons);
+
+                    //Parse good rod tables
+                    encounterTable.goodRodMons = ConvertMonsLvToEncounters(table[encounterTableIdx].IiMons);
+
+                    //Parse super rod tables
+                    encounterTable.superRodMons = ConvertMonsLvToEncounters(table[encounterTableIdx].SugoiMons);
+
+                    encounterTableFile.encounterTables.Add(encounterTable);
+                }
+
+                //Parse trophy garden table
+                encounterTableFile.trophyGardenMons = new();
+                var trophyTable = encounterTableMonoBehaviours[encounterTableFileIdx].Urayama;
+                for (int trophyGardenMonIdx = 0; trophyGardenMonIdx < trophyTable.Length; trophyGardenMonIdx++)
+                    encounterTableFile.trophyGardenMons.Add(trophyTable[trophyGardenMonIdx].MonsNo);
+
+                //Parse honey tree tables
+                encounterTableFile.honeyTreeEnconters = new();
+                var honeyTable = encounterTableMonoBehaviours[encounterTableFileIdx].Mistu;
+                for (int honeyTreeEncounterIdx = 0; honeyTreeEncounterIdx < honeyTable.Length; honeyTreeEncounterIdx++)
+                {
+                    HoneyTreeEncounter honeyTreeEncounter = new()
+                    {
+                        rate = honeyTable[honeyTreeEncounterIdx].Rate,
+                        normalDexID = honeyTable[honeyTreeEncounterIdx].Normal,
+                        rareDexID = honeyTable[honeyTreeEncounterIdx].Rare,
+                        superRareDexID = honeyTable[honeyTreeEncounterIdx].SuperRare
+                    };
+
+                    encounterTableFile.honeyTreeEnconters.Add(honeyTreeEncounter);
+                }
+
+                //Parse safari table
+                encounterTableFile.safariMons = new();
+                var safariTable = encounterTableMonoBehaviours[encounterTableFileIdx].Safari;
+                for (int safariMonIdx = 0; safariMonIdx < safariTable.Length; safariMonIdx++)
+                    encounterTableFile.safariMons.Add(safariTable[safariMonIdx].MonsNo);
+
+                gameData.encounterTableFiles[encounterTableFileIdx] = encounterTableFile;
+            }
+        }
+
+        /// <summary>
         ///  Parses an array of encounters in a monobehaviour into a list of Encounters.
         /// </summary>
         private static List<Encounter> GetParsedEncounters(AssetTypeValueField[] encounterFields)
@@ -745,6 +856,26 @@ namespace ImpostersOrdeal
                 encounter.maxLv = encounterFields[encounterIdx].children[0].value.value.asInt32;
                 encounter.minLv = encounterFields[encounterIdx].children[1].value.value.asInt32;
                 encounter.dexID = encounterFields[encounterIdx].children[2].value.value.asInt32;
+
+                encounters.Add(encounter);
+            }
+            return encounters;
+        }
+
+        /// <summary>
+        ///  Converts an array of MonsLv into a List of Encounters.
+        /// </summary>
+        private static List<Encounter> ConvertMonsLvToEncounters(MonsLv[] monsLv)
+        {
+            List<Encounter> encounters = new();
+            for (int encounterIdx = 0; encounterIdx < monsLv.Length; encounterIdx++)
+            {
+                Encounter encounter = new()
+                {
+                    maxLv = monsLv[encounterIdx].MaxLv,
+                    minLv = monsLv[encounterIdx].MinLv,
+                    dexID = monsLv[encounterIdx].MonsNo
+                };
 
                 encounters.Add(encounter);
             }
@@ -3684,7 +3815,7 @@ distributionTable
                 encounterTableMonoBehaviours[encounterTableFileIdx].Safari = new Sheetsafari[encounterTableFile.safariMons.Count];
                 for (int safariMonIdx = 0; safariMonIdx < encounterTableMonoBehaviours[encounterTableFileIdx].Safari.Length; safariMonIdx++)
                 {
-                    encounterTableMonoBehaviours[encounterTableFileIdx].Urayama[safariMonIdx] = new()
+                    encounterTableMonoBehaviours[encounterTableFileIdx].Safari[safariMonIdx] = new()
                     {
                         MonsNo = encounterTableFile.safariMons[safariMonIdx]
                     };

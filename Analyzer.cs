@@ -430,7 +430,7 @@ namespace ImpostersOrdeal
             randomizerSetupConfig.trainerPokemonEvs = GetNumericDistributionConfig(tps, p => p.GetEVs().Sum(), AbsoluteBoundary.EvTotal);
 
             //Scripted Pokémon
-            List<Command> commands = gameData.evScripts.SelectMany(e => e.scripts.SelectMany(s => s.commands)).ToList();
+            var commands = gameData.evScripts.SelectMany(e => e.scripts.SelectMany(s => s.commands)).ToList();
             randomizerSetupConfig.scriptedPokemon = GetItemDistributionConfig(commands.Where(c => c.cmdType == 322 && c.args[1].argType == 1).ToList(), c => (int)c.args[1].data, gameData.dexEntries.Select(o => (INamedEntity)o).ToList());
 
             //Scripted Items

@@ -3,7 +3,7 @@ using System;
 using SharpYaml.Serialization;
 using System.Globalization;
 
-namespace ImpostersOrdeal.Structs.YAML
+namespace ImpostersOrdeal
 {
     public class UnityFileSerializer : IYamlSerializable
     {

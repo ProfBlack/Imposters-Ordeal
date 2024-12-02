@@ -32,7 +32,7 @@ namespace ImpostersOrdeal
             public List<UgEncounterFile> ugEncounterFiles;
             public List<UgEncounterLevelSet> ugEncounterLevelSets;
             public List<UgSpecialEncounter> ugSpecialEncounters;
-            public List<UgPokemonData> ugPokemonData;
+            public List<GameDataTypes.UgPokemonData> ugPokemonData;
             public List<Ability> abilities; //Readonly
             public List<Typing> typings; //Readonly
             public List<DamageCategory> damageCategories; //Readonly
@@ -228,6 +228,8 @@ namespace ImpostersOrdeal
             BattleMasterdatas,
             UIMasterdatas,
             ContestMasterdatas,
+
+            ExternalJSON,
         }
 
         public enum AbsoluteBoundary
@@ -274,8 +276,48 @@ namespace ImpostersOrdeal
             randomizerPaths[PathEnum.UIMasterdatas] =       Path.Combine("romfs", "Data", "StreamingAssets", "AssetAssistant", "UIs", "masterdatas", "uimasterdatas");
             randomizerPaths[PathEnum.Ugdata] =              Path.Combine("romfs", "Data", "StreamingAssets", "AssetAssistant", "UnderGround", "data", "ugdata");
 
-            //yamlAssetPaths­["scriptableobjects"]                             = PathEnum.Gamesettings;
-            yamlAssetPaths­[Path.Combine("scriptableobjects", "fieldencount")] = PathEnum.Gamesettings;
+            yamlAssetPaths­["md"]                                                     = PathEnum.BattleMasterdatas;
+            yamlAssetPaths­[Path.Combine("masterdatas", "contestdatas")]              = PathEnum.ContestMasterdatas;
+            yamlAssetPaths­[Path.Combine("evscriptdata", "eventasset")]               = PathEnum.EvScript;
+            //yamlAssetPaths­[Path.Combine("evscriptdata", "eventcamera")]              = PathEnum.EvScript;
+            //yamlAssetPaths­[Path.Combine("md", "adventurenote")]                      = PathEnum.DprMasterdatas;
+            //yamlAssetPaths­[Path.Combine("md", "characteranime")]                     = PathEnum.DprMasterdatas;
+            yamlAssetPaths­[Path.Combine("md", "characterinfo")]                      = PathEnum.DprMasterdatas;
+            //yamlAssetPaths­[Path.Combine("md", "common")]                             = PathEnum.DprMasterdatas;
+            //yamlAssetPaths­[Path.Combine("md", "honeytree")]                          = PathEnum.DprMasterdatas;
+            //yamlAssetPaths­[Path.Combine("md", "kinomidata")]                         = PathEnum.DprMasterdatas;
+            //yamlAssetPaths­[Path.Combine("md", "localkoukan")]                        = PathEnum.DprMasterdatas;
+            //yamlAssetPaths­[Path.Combine("md", "mapwarpdata")]                        = PathEnum.DprMasterdatas;
+            //yamlAssetPaths­[Path.Combine("md", "msgwindowdata")]                      = PathEnum.DprMasterdatas;
+            //yamlAssetPaths­[Path.Combine("md", "network")]                            = PathEnum.DprMasterdatas;
+            //yamlAssetPaths­[Path.Combine("md", "placedata")]                          = PathEnum.DprMasterdatas;
+            //yamlAssetPaths­[Path.Combine("md", "placetagdata")]                       = PathEnum.DprMasterdatas;
+            yamlAssetPaths­[Path.Combine("md", "pokemondata")]                        = PathEnum.DprMasterdatas;
+            yamlAssetPaths­[Path.Combine("md", "shopdata")]                           = PathEnum.DprMasterdatas;
+            //yamlAssetPaths­[Path.Combine("md", "stopdata")]                           = PathEnum.DprMasterdatas;
+            yamlAssetPaths­[Path.Combine("md", "tower")]                              = PathEnum.DprMasterdatas;
+            //yamlAssetPaths­[Path.Combine("md", "tv")]                                 = PathEnum.DprMasterdatas;
+            //yamlAssetPaths­[Path.Combine("md", "underground")]                        = PathEnum.DprMasterdatas;
+            //yamlAssetPaths­["scriptableobjects"]                                      = PathEnum.Gamesettings;
+            yamlAssetPaths­[Path.Combine("scriptableobjects", "fieldencount")]        = PathEnum.Gamesettings;
+            yamlAssetPaths­[Path.Combine("format_msbt", "en", "english")]             = PathEnum.English;
+            yamlAssetPaths­[Path.Combine("format_msbt", "fr", "french")]              = PathEnum.French;
+            yamlAssetPaths­[Path.Combine("format_msbt", "ge", "german")]              = PathEnum.German;
+            yamlAssetPaths­[Path.Combine("format_msbt", "it", "italian")]             = PathEnum.Italian;
+            yamlAssetPaths­[Path.Combine("format_msbt", "jp", "jpn")]                 = PathEnum.Jpn;
+            yamlAssetPaths­[Path.Combine("format_msbt", "jp", "jpn_kanji")]           = PathEnum.JpnKanji;
+            yamlAssetPaths­[Path.Combine("format_msbt", "ko", "korean")]              = PathEnum.Korean;
+            yamlAssetPaths­[Path.Combine("format_msbt", "si", "simp_chinese")]        = PathEnum.SimpChinese;
+            yamlAssetPaths­[Path.Combine("format_msbt", "sp", "spanish")]             = PathEnum.Spanish;
+            yamlAssetPaths­[Path.Combine("format_msbt", "tr", "trad_chinese")]        = PathEnum.TradChinese;
+            yamlAssetPaths­[Path.Combine("pml", "data")]                              = PathEnum.PersonalMasterdatas;
+            yamlAssetPaths­["masterdatas"]                                            = PathEnum.UIMasterdatas;
+            yamlAssetPaths­[Path.Combine("ugassets", "datatable")]                    = PathEnum.Ugdata;
+            yamlAssetPaths­[Path.Combine("ugassets", "datatable", "ug_encounttable")] = PathEnum.Ugdata;
+
+            yamlAssetPaths­[Path.Combine("ExtraData", "Encounters", "Starter")]       = PathEnum.ExternalJSON;
+            yamlAssetPaths­[Path.Combine("ExtraData", "Encounters", "HoneyTrees")]    = PathEnum.ExternalJSON;
+            yamlAssetPaths­[Path.Combine("ExtraData", "MonData", "TMLearnset")]       = PathEnum.ExternalJSON;
 
             DataColumn[] columns = { new DataColumn("Value", typeof(string)), new DataColumn("Minimum", typeof(int)), new DataColumn("Maximum", typeof(int)), new DataColumn("Increment", typeof(int)) };
             absoluteBoundaries.Columns.AddRange(columns);

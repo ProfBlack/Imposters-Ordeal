@@ -278,7 +278,7 @@ namespace ImpostersOrdeal
 
             foreach (MessageFileSet messageFileSet in gameData.messageFileSets)
             {
-                List<LabelData> labelDatas = messageFileSet.GetStrings();
+                var labelDatas = messageFileSet.GetStrings();
                 labelDatas.ForEach(l => l.wordDatas.Last().eventID = 7);
 
                 if (!preserveStringLength)
@@ -324,7 +324,7 @@ namespace ImpostersOrdeal
                     indexes[currentList].Add(i);
                 }
 
-                List<LabelData> oldLabelDatas = new();
+                List<GameDataTypes.LabelData> oldLabelDatas = new();
                 oldLabelDatas.AddRange(labelDatas);
 
                 List<int>[] newIndexes = new List<int>[10];
@@ -346,9 +346,9 @@ namespace ImpostersOrdeal
 
         private void RandomizeScriptedItems(IDistribution distribution)
         {
-            foreach (EvScript evScript in gameData.evScripts)
-                foreach (Script script in evScript.scripts)
-                    foreach (Command command in script.commands)
+            foreach (var evScript in gameData.evScripts)
+                foreach (var script in evScript.scripts)
+                    foreach (var command in script.commands)
                         if (command.cmdType == 187 && gameData.items[(int)command.args[0].data].IsPurchasable())
                         {
                             command.args[0].argType = 1;
@@ -360,9 +360,9 @@ namespace ImpostersOrdeal
 
         private void RandomizeScriptedPokemon(IDistribution distribution)
         {
-            foreach (EvScript evScript in gameData.evScripts)
-                foreach (Script script in evScript.scripts)
-                    foreach(Command command in script.commands)
+            foreach (var evScript in gameData.evScripts)
+                foreach (var script in evScript.scripts)
+                    foreach(var command in script.commands)
                         if (command.cmdType == 322)
                         {
                             command.args[1].argType = 1;

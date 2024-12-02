@@ -11,9 +11,6 @@ using System.Configuration;
 using System.Text;
 using Newtonsoft.Json;
 using SharpYaml.Serialization;
-using System.Reflection.Metadata;
-using ImpostersOrdeal.Structs.YAML;
-using System.Xml.Linq;
 
 namespace ImpostersOrdeal
 {
@@ -51,6 +48,7 @@ namespace ImpostersOrdeal
         private static readonly string globalMetadataPath = "romfs\\Data\\Managed\\Metadata\\global-metadata.dat";
         private static readonly string dprBinPath = "romfs\\Data\\StreamingAssets\\AssetAssistant\\Dpr.bin";
         private static readonly string externalJsonGamePath = "romfs\\Data\\ExtraData";
+        private static readonly string externalUnityJsonGamePath = "ExtraData";
         private static readonly string modArgsPath = "ImpostersOrdealArgs.json";
 
         private string assetAssistantPath;
@@ -76,6 +74,7 @@ namespace ImpostersOrdeal
                         EmitAlias = false,
                     };
                     settings.RegisterSerializer(typeof(UnityFile), new UnityFileSerializer());
+                    settings.RegisterSerializer(typeof(float), new FloatSerializer());
                     serializer = new SharpYaml.Serialization.Serializer(settings);
                 }
 
@@ -383,7 +382,9 @@ namespace ImpostersOrdeal
             string assetsPath = Path.Combine(fbd.SelectedPath, "Assets");
 
             //Loads all files
-            string[] modFilePaths = Directory.GetFiles(assetsPath, "*.asset", SearchOption.AllDirectories);
+            string[] modFilePaths = Directory.GetFiles(assetsPath, "*.asset", SearchOption.AllDirectories)
+                             .Union(Directory.GetFiles(assetsPath, "*.json", SearchOption.AllDirectories))
+                             .ToArray();
             for (int fileIdx = 0; fileIdx < modFilePaths.Length; fileIdx++)
             {
                 string gamePath = modFilePaths[fileIdx].Substring(assetsPath.Length + 1, modFilePaths[fileIdx].Length - assetsPath.Length - 1);
@@ -418,7 +419,7 @@ namespace ImpostersOrdeal
         /// </summary>
         public void ExportMod()
         {
-            string outputDirectory = Environment.CurrentDirectory + "\\" + outputModName;
+            string outputDirectory = Path.Combine(Environment.CurrentDirectory, outputModName);
             if (Directory.Exists(outputDirectory))
                 Directory.Delete(outputDirectory, true);
             Directory.CreateDirectory(outputDirectory);
@@ -428,11 +429,11 @@ namespace ImpostersOrdeal
         }
 
         /// <summary>
-        ///  Exports current file archive into local directory.
+        ///  Exports current yaml archive into local directory.
         /// </summary>
         public void ExportModToYAML()
         {
-            string outputDirectory = Environment.CurrentDirectory + "\\" + outputYAMLModName;
+            string outputDirectory = Path.Combine(Environment.CurrentDirectory, outputYAMLModName);
             if (Directory.Exists(outputDirectory))
                 Directory.Delete(outputDirectory, true);
             Directory.CreateDirectory(outputDirectory);
@@ -708,37 +709,67 @@ namespace ImpostersOrdeal
             return new(File.ReadAllText(fileArchive[logPath].fileLocation));
         }
 
-        public List<(string, T)> TryGetExternalJsons<T>(string externalJsonDir)
+        public List<(string, T)> TryGetExternalJsons<T>(string externalJsonDir, bool unityPath = false)
         {
-            string gamePath = externalJsonGamePath + "\\" + externalJsonDir;
-            List<(string, T)> result = new();
-            foreach (string path in fileArchive.Keys.Where(s => s.StartsWith(gamePath)))
-                result.Add((Path.GetFileNameWithoutExtension(path), GetExternalJson<T>(path)));
-            return result;
+            if (unityPath)
+            {
+                string gamePath = Path.Combine(externalUnityJsonGamePath, externalJsonDir);
+                List<(string, T)> result = new();
+                foreach (string path in yamlArchive.Keys.Where(s => s.StartsWith(gamePath)))
+                    result.Add((Path.GetFileNameWithoutExtension(path), GetExternalJson<T>(path, unityPath)));
+                return result;
+            }
+            else
+            {
+                string gamePath = Path.Combine(externalJsonGamePath, externalJsonDir);
+                List<(string, T)> result = new();
+                foreach (string path in fileArchive.Keys.Where(s => s.StartsWith(gamePath)))
+                    result.Add((Path.GetFileNameWithoutExtension(path), GetExternalJson<T>(path, unityPath)));
+                return result;
+            }
         }
 
-        public T TryGetExternalJson<T>(string externalJsonPath)
+        public T TryGetExternalJson<T>(string externalJsonPath, bool unityPath = false)
         {
-            string gamePath = externalJsonGamePath + "\\" + externalJsonPath;
-            if (!fileArchive.ContainsKey(gamePath))
-                return default;
-            return GetExternalJson<T>(gamePath);
+            if (unityPath)
+            {
+                string gamePath = Path.Combine(externalUnityJsonGamePath, externalJsonPath);
+                if (!yamlArchive.ContainsKey(gamePath))
+                    return default;
+                return GetExternalJson<T>(gamePath, unityPath);
+            }
+            else
+            {
+                string gamePath = Path.Combine(externalJsonGamePath, externalJsonPath);
+                if (!fileArchive.ContainsKey(gamePath))
+                    return default;
+                return GetExternalJson<T>(gamePath, unityPath);
+            }
         }
 
-        private T GetExternalJson<T>(string gamePath)
+        private T GetExternalJson<T>(string gamePath, bool unityPath = false)
         {
-            return JsonConvert.DeserializeObject<T>(File.ReadAllText(fileArchive[gamePath].fileLocation));
+            if (unityPath)
+                return JsonConvert.DeserializeObject<T>(File.ReadAllText(yamlArchive[gamePath].fileLocation));
+            else
+                return JsonConvert.DeserializeObject<T>(File.ReadAllText(fileArchive[gamePath].fileLocation));
         }
 
-        public void CommitExternalJson(string externalJsonPath)
+        public void CommitExternalJson(string externalJsonPath, bool unityPath = false)
         {
-            string gamePath = externalJsonGamePath + "\\" + externalJsonPath;
-            if (!fileArchive.ContainsKey(gamePath))
-                fileArchive[gamePath] = new()
-                {
-                    gamePath = gamePath
-                };
-            fileArchive[gamePath].fileSource = FileSource.App;
+            if (unityPath)
+            {
+                string gamePath = Path.Combine(externalUnityJsonGamePath, externalJsonPath);
+                if (!yamlArchive.ContainsKey(gamePath))
+                    yamlArchive[gamePath] = new() { assetPath = gamePath };
+            }
+            else
+            {
+                string gamePath = Path.Combine(externalJsonGamePath, externalJsonPath);
+                if (!fileArchive.ContainsKey(gamePath))
+                    fileArchive[gamePath] = new() { gamePath = gamePath };
+                fileArchive[gamePath].fileSource = FileSource.App;
+            }
         }
 
         public ModArgs TryGetModArgs()
@@ -821,34 +852,48 @@ namespace ImpostersOrdeal
         /// </summary>
         private void ExportYAMLFile(YAMLFileData fd, string modRoot)
         {
-            if (!fd.IsLoaded())
-                return;
+            var data = fd.GetLoadedData();
 
-            Directory.CreateDirectory(Path.Combine(modRoot,Path.GetDirectoryName(fd.assetPath)));
-            string newLocation = Path.Combine(modRoot, fd.assetPath);
+            if (fd.IsLoaded())
+            {
+                Directory.CreateDirectory(Path.Combine(modRoot, Path.GetDirectoryName(fd.assetPath)));
+                string newLocation = Path.Combine(modRoot, fd.assetPath);
 
-            using StreamWriter stream = new StreamWriter(newLocation);
+                using StreamWriter stream = new StreamWriter(newLocation);
 
-            stream.Write(fd.unityPrefix);
-            stream.Write(Serializer.Serialize(fd.loadedData));
+                stream.Write(fd.unityPrefix);
+                stream.Write(Serializer.Serialize(data));
 
-            if (fd.tempLocation)
-                File.Delete(fd.fileLocation);
+                if (fd.tempLocation)
+                    File.Delete(fd.fileLocation);
+            }
+            else if (fd.bundleOrigin == PathEnum.ExternalJSON)
+            {
+                ExportExternalJson(new FileData() { gamePath = fd.assetPath }, modRoot);
+            }
         }
 
         private static bool ExportExternalJson(FileData fd, string modRoot)
         {
-            if (!fd.gamePath.StartsWith(externalJsonGamePath)) return false;
+            if (!fd.gamePath.StartsWith(externalJsonGamePath) && !fd.gamePath.StartsWith(externalUnityJsonGamePath)) return false;
             if (!fd.gamePath.EndsWith(".json")) return false;
-            string externalJsonPath = fd.gamePath[(externalJsonGamePath.Length + 1)..];
+
+            string externalJsonPath;
+            if (fd.gamePath.StartsWith(externalJsonGamePath))
+                externalJsonPath = fd.gamePath[(externalJsonGamePath.Length + 1)..];
+            else
+                externalJsonPath = fd.gamePath[(externalUnityJsonGamePath.Length + 1)..];
+
             string fileName = Path.GetFileNameWithoutExtension(externalJsonPath);
             if (externalJsonPath.StartsWith("Encounters\\Starter"))
             {
+                new FileInfo(modRoot + "\\" + fd.gamePath).Directory.Create();
                 File.WriteAllText(modRoot + "\\" + fd.gamePath, JsonConvert.SerializeObject(gameData.externalStarters.First(t => t.name == fileName).obj, Formatting.Indented));
                 return true;
             }
             if (externalJsonPath.StartsWith("Encounters\\HoneyTrees"))
             {
+                new FileInfo(modRoot + "\\" + fd.gamePath).Directory.Create();
                 File.WriteAllText(modRoot + "\\" + fd.gamePath, JsonConvert.SerializeObject(gameData.externalHoneyTrees.First(t => t.name == fileName).obj, Formatting.Indented));
                 return true;
             }
@@ -857,9 +902,11 @@ namespace ImpostersOrdeal
                 string[] segments = fileName.Split('_');
                 int dexID = int.Parse(segments[1]);
                 int formID = int.Parse(segments[3]);
+                new FileInfo(modRoot + "\\" + fd.gamePath).Directory.Create();
                 File.WriteAllText(modRoot + "\\" + fd.gamePath, JsonConvert.SerializeObject(gameData.GetPokemon(dexID, formID).externalTMLearnset, Formatting.Indented));
                 return true;
             }
+
             return false;
         }
 
@@ -1085,24 +1132,52 @@ namespace ImpostersOrdeal
         /// </summary>
         private static MonoBehaviour FromYAML(PathEnum pathEnum, string yaml)
         {
-            switch (pathEnum)
+            return pathEnum switch
             {
-                case PathEnum.EvScript:
-                    return FromYaml<EventCameraData>(yaml) ??
-                           FromYaml<EventCameraData>(yaml) as MonoBehaviour;
-
-                case PathEnum.Gamesettings:
-                    return FromYaml<FieldEncountTable>(yaml);
-
-                default:
-                    return null;
+                PathEnum.BattleMasterdatas =>   FromYAML<BattleDataTable>(yaml),
+                PathEnum.ContestMasterdatas =>  FromYAML<ContestConfigDatas>(yaml),
+                PathEnum.EvScript =>            FromYAML<EvData>(yaml),
+                PathEnum.DprMasterdatas =>      FromYAML<MonohiroiTable>(yaml) ??
+                                                FromYAML<PokemonInfo>(yaml) ??
+                                                FromYAML<ShopTable>(yaml) ??
+                                                FromYAML<TowerDoubleStockTable>(yaml) ??
+                                                FromYAML<TowerSingleStockTable>(yaml) ??
+                                                FromYAML<TowerTrainerTable>(yaml) ??
+                                                FromYAML<TrainerTable>(yaml) as MonoBehaviour,
+                PathEnum.Gamesettings =>        FromYAML<FieldEncountTable>(yaml),
+                PathEnum.English =>             FromYAML<MsbtData>(yaml),
+                PathEnum.French =>              FromYAML<MsbtData>(yaml),
+                PathEnum.German =>              FromYAML<MsbtData>(yaml),
+                PathEnum.Italian =>             FromYAML<MsbtData>(yaml),
+                PathEnum.Jpn =>                 FromYAML<MsbtData>(yaml),
+                PathEnum.JpnKanji =>            FromYAML<MsbtData>(yaml),
+                PathEnum.Korean =>              FromYAML<MsbtData>(yaml),
+                PathEnum.SimpChinese =>         FromYAML<MsbtData>(yaml),
+                PathEnum.Spanish =>             FromYAML<MsbtData>(yaml),
+                PathEnum.TradChinese =>         FromYAML<MsbtData>(yaml),
+                PathEnum.PersonalMasterdatas => FromYAML<AddPersonalTable>(yaml) ??
+                                                FromYAML<EvolveTable>(yaml) ??
+                                                FromYAML<GrowTable>(yaml) ??
+                                                FromYAML<ItemTable>(yaml) ??
+                                                FromYAML<PersonalTable>(yaml) ??
+                                                FromYAML<TamagoWazaTable>(yaml) ??
+                                                FromYAML<WazaTable>(yaml) ??
+                                                FromYAML<WazaOboeTable>(yaml) as MonoBehaviour,
+                PathEnum.UIMasterdatas =>       FromYAML<DistributionTable>(yaml) ??
+                                                FromYAML<UIDatabase>(yaml) as MonoBehaviour,
+                PathEnum.Ugdata =>              FromYAML<UgEncount>(yaml) ??
+                                                FromYAML<UgEncountLevel>(yaml) ??
+                                                FromYAML<UgPokemonData>(yaml) ??
+                                                FromYAML<UgRandMark>(yaml) ??
+                                                FromYAML<UgSpecialPokemon>(yaml) as MonoBehaviour,
+                _ => null,
             };
         }
 
         /// <summary>
         ///  Deserializes a yaml string to the given type.
         /// </summary>
-        private static T FromYaml<T>(string yaml) where T : class
+        private static T FromYAML<T>(string yaml) where T : class
         {
             try
             {
@@ -1110,7 +1185,7 @@ namespace ImpostersOrdeal
             }
             catch (Exception ex)
             {
-                MessageBox.Show("could not deserialize? " + ex.Message, "yaml test");
+                //MessageBox.Show(string.Format("Could not deserialize file starting with:\n{0}\n{1}", yaml[..350], ex.Message), "FromYAML<T>");
                 return null;
             }
         }

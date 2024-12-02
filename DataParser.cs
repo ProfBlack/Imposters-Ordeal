@@ -73,35 +73,35 @@ namespace ImpostersOrdeal
         /// <summary>
         ///  Parses all yaml files necessary for analysis and configuration.
         /// </summary>
-        public static async void PrepareYAMLAnalysis()
+        public static void PrepareYAMLAnalysis()
         {
             LoadYAMLs();
             List<Task> tasks = new()
             {
-                //Task.Run(() => ParseNatures()),
-                //Task.Run(() => ParseEvScripts()),
-                //Task.Run(() => ParseAllMessageFiles()),
-                //Task.Run(() => ParseGrowthRates()),
-                //Task.Run(() => ParseItems()),
-                //Task.Run(() => ParsePickupItems()),
-                //Task.Run(() => ParseShopTables()),
-                //Task.Run(() => ParseMoves()),
-                //Task.Run(() => ParseTMs()),
-                //Task.Run(() => ParsePokemon()),
+                Task.Run(() => ParseNaturesYAML()),
+                Task.Run(() => ParseEvScriptsYAML()),
+                Task.Run(() => ParseAllMessageFilesYAML()),
+                Task.Run(() => ParseGrowthRatesYAML()),
+                Task.Run(() => ParseItemsYAML()),
+                Task.Run(() => ParsePickupItemsYAML()),
+                Task.Run(() => ParseShopTablesYAML()),
+                Task.Run(() => ParseMovesYAML()),
+                Task.Run(() => ParseTMsYAML()),
+                Task.Run(() => ParsePokemonYAML()),
                 Task.Run(() => ParseEncounterTablesYAML()),
-                //Task.Run(() => ParseTrainers()),
-                //Task.Run(() => ParseBattleTowerTrainers()),
-                //Task.Run(() => ParseUgTables()),
-                //Task.Run(() => ParseAbilities()),
-                //Task.Run(() => ParseTypings()),
-                //Task.Run(() => ParseTrainerTypes()),
-                //Task.Run(() => ParseBattleMasterDatas()),
-                //Task.Run(() => ParseMasterDatas()),
-                //Task.Run(() => ParsePersonalMasterDatas()),
-                //Task.Run(() => ParseUIMasterDatas()),
-                //Task.Run(() => ParseContestMasterDatas()),
-                //Task.Run(() => TryParseExternalStarters()),
-                //Task.Run(() => TryParseExternalHoneyTrees()),
+                Task.Run(() => ParseTrainersYAML()),
+                Task.Run(() => ParseBattleTowerTrainersYAML()),
+                Task.Run(() => ParseUgTablesYAML()),
+                Task.Run(() => ParseAbilitiesYAML()),
+                Task.Run(() => ParseTypingsYAML()),
+                Task.Run(() => ParseTrainerTypesYAML()),
+                Task.Run(() => ParseBattleMasterDatasYAML()),
+                Task.Run(() => ParseMasterDatasYAML()),
+                Task.Run(() => ParsePersonalMasterDatasYAML()),
+                Task.Run(() => ParseUIMasterDatasYAML()),
+                Task.Run(() => ParseContestMasterDatasYAML()),
+                Task.Run(() => TryParseExternalStarters(true)),
+                Task.Run(() => TryParseExternalHoneyTrees(true)),
             };
             ParseDamagaCategories();
             ParseGlobalMetadata();
@@ -117,18 +117,18 @@ namespace ImpostersOrdeal
             gameData.modArgs = fileManager.TryGetModArgs();
         }
 
-        private static void TryParseExternalHoneyTrees()
+        private static void TryParseExternalHoneyTrees(bool unityPath = false)
         {
             gameData.externalHoneyTrees = null;
-            List<(string name, HoneyTreeZone obj)> files = fileManager.TryGetExternalJsons<HoneyTreeZone>($"Encounters\\HoneyTrees");
+            List<(string name, HoneyTreeZone obj)> files = fileManager.TryGetExternalJsons<HoneyTreeZone>($"Encounters\\HoneyTrees", unityPath);
             if (files.Count == 0) return;
             gameData.externalHoneyTrees = files;
         }
 
-        private static void TryParseExternalStarters()
+        private static void TryParseExternalStarters(bool unityPath = false)
         {
             gameData.externalStarters = null;
-            List<(string name, Starter obj)> files = fileManager.TryGetExternalJsons<Starter>($"Encounters\\Starter");
+            List<(string name, Starter obj)> files = fileManager.TryGetExternalJsons<Starter>($"Encounters\\Starter", unityPath);
             if (files.Count == 0) return;
             gameData.externalStarters = files;
         }
@@ -155,6 +155,29 @@ namespace ImpostersOrdeal
             }
         }
 
+        private static async Task ParseContestMasterDatasYAML()
+        {
+            gameData.contestResultMotion = new();
+
+            var monoBehaviour = (await yamlCollection[PathEnum.ContestMasterdatas]).Find(y => y.MonoBehaviour?.Name == "ContestConfigDatas").MonoBehaviour as ContestConfigDatas;
+            var resultMotionSheet = monoBehaviour.ResultMotion;
+            for (int i = 0; i < resultMotionSheet.Length; i++)
+            {
+                ResultMotion rm = new()
+                {
+                    validFlag = resultMotionSheet[i].ValidFlag,
+                    id = resultMotionSheet[i].ID,
+                    monsNo = resultMotionSheet[i].MonsNo,
+                    winAnim = resultMotionSheet[i].WinAnim,
+                    loseAnim = resultMotionSheet[i].LoseAnim,
+                    waitAnim = resultMotionSheet[i].WaitAnim,
+                    duration = resultMotionSheet[i].Duration,
+                };
+
+                gameData.contestResultMotion.Add(rm);
+            }
+        }
+
         /// <summary>
         ///  Loads all monobehaviours asyncronously into monoBehaviourCollection.
         /// </summary>
@@ -162,7 +185,8 @@ namespace ImpostersOrdeal
         {
             monoBehaviourCollection = new();
             foreach (PathEnum pe in Enum.GetValues(typeof(PathEnum)))
-                monoBehaviourCollection[pe] = Task.Run(() => fileManager.GetMonoBehaviours(pe));
+                if (pe != PathEnum.ExternalJSON)
+                    monoBehaviourCollection[pe] = Task.Run(() => fileManager.GetMonoBehaviours(pe));
         }
 
         /// <summary>
@@ -172,7 +196,8 @@ namespace ImpostersOrdeal
         {
             yamlCollection = new();
             foreach (PathEnum pe in Enum.GetValues(typeof(PathEnum)))
-                yamlCollection[pe] = Task.Run(() => fileManager.GetYAMLs(pe));
+                if (pe != PathEnum.ExternalJSON)
+                    yamlCollection[pe] = Task.Run(() => fileManager.GetYAMLs(pe));
         }
 
         /// <summary>
@@ -250,6 +275,30 @@ namespace ImpostersOrdeal
         }
 
         /// <summary>
+        ///  Gets all the labels of a yaml message file in a specific language.
+        /// </summary>
+        private static async Task<LabelData[]> FindLabelArrayOfYAMLMessageFileAsync(string fileName, Language language, bool isKanji = false)
+        {
+            string fullFileName = FormatMessageFileNameForLanguage(fileName, language, isKanji);
+            PathEnum pathForLanguage = GetMessageBundlePathForLanguage(language, isKanji);
+
+            var mono = (await yamlCollection[pathForLanguage]).Find(y => y.MonoBehaviour?.Name == fullFileName);
+            return (mono.MonoBehaviour as MsbtData).LabelDataArray ?? Array.Empty<LabelData>();
+        }
+
+        /// <summary>
+        ///  Gets all the labels of a yaml message file in a specific language.
+        /// </summary>
+        private static LabelData[] FindLabelArrayOfYAMLMessageFile(string fileName, Language language, bool isKanji = false)
+        {
+            string fullFileName = FormatMessageFileNameForLanguage(fileName, language, isKanji);
+            PathEnum pathForLanguage = GetMessageBundlePathForLanguage(language, isKanji);
+            
+            var mono = fileManager.GetYAMLs(pathForLanguage).Find(y => y.MonoBehaviour?.Name == fullFileName);
+            return (mono.MonoBehaviour as MsbtData).LabelDataArray ?? Array.Empty<LabelData>();
+        }
+
+        /// <summary>
         ///  Overwrites GlobalData with parsed TrainerTypes.
         /// </summary>
         private static async Task ParseTrainerTypes()
@@ -280,6 +329,35 @@ namespace ImpostersOrdeal
         }
 
         /// <summary>
+        ///  Overwrites GlobalData with parsed TrainerTypes.
+        /// </summary>
+        private static async Task ParseTrainerTypesYAML()
+        {
+            gameData.trainerTypes = new();
+            var monoBehaviour = (await yamlCollection[PathEnum.DprMasterdatas]).Find(y => y.MonoBehaviour?.Name == "TrainerTable").MonoBehaviour as TrainerTable;
+
+            var nameFields = await FindLabelArrayOfYAMLMessageFileAsync("dp_trainers_type", Language.English);
+            Dictionary<string, string> trainerTypeNames = new();
+            foreach (var label in nameFields)
+                if (label.WordDataArray.Length > 0)
+                    trainerTypeNames[label.LabelName] = label.WordDataArray[0].Str;
+
+            var trainerTypeFields = monoBehaviour.TrainerType;
+            for (int trainerTypeIdx = 0; trainerTypeIdx < trainerTypeFields.Length; trainerTypeIdx++)
+            {
+                if (trainerTypeFields[trainerTypeIdx].TrainerID == -1)
+                    continue;
+
+                TrainerType trainerType = new();
+                trainerType.trainerTypeID = trainerTypeIdx;
+                trainerType.label = trainerTypeFields[trainerTypeIdx].LabelTrType;
+                trainerType.name = !trainerTypeNames.ContainsKey(trainerType.label) ? string.Empty : trainerTypeNames[trainerType.label];
+
+                gameData.trainerTypes.Add(trainerType);
+            }
+        }
+
+        /// <summary>
         ///  Overwrites GlobalData with parsed Natures.
         /// </summary>
         private static async Task ParseNatures()
@@ -292,6 +370,26 @@ namespace ImpostersOrdeal
                 Nature nature = new();
                 nature.natureID = natureID;
                 nature.name = Encoding.UTF8.GetString(natureFields[natureID].children[6].children[0].children[0].children[4].value.value.asString);
+
+                gameData.natures.Add(nature);
+            }
+        }
+
+        /// <summary>
+        ///  Overwrites GlobalData with parsed yaml Natures.
+        /// </summary>
+        private static async Task ParseNaturesYAML()
+        {
+            gameData.natures = new();
+            var labels = await FindLabelArrayOfYAMLMessageFileAsync("ss_seikaku", Language.English);
+
+            for (int natureID = 0; natureID < labels.Length; natureID++)
+            {
+                Nature nature = new()
+                {
+                    natureID = natureID,
+                    name = labels[natureID].WordDataArray[0].Str
+                };
 
                 gameData.natures.Add(nature);
             }
@@ -330,6 +428,24 @@ namespace ImpostersOrdeal
         }
 
         /// <summary>
+        ///  Overwrites GlobalData with parsed yaml Typings.
+        /// </summary>
+        private static async Task ParseTypingsYAML()
+        {
+            gameData.typings = new();
+            var typingFields = await FindLabelArrayOfYAMLMessageFileAsync ("ss_typename", Language.English);
+
+            for (int typingID = 0; typingID < typingFields.Length; typingID++)
+            {
+                Typing typing = new();
+                typing.typingID = typingID;
+                typing.name = typingFields[typingID].WordDataArray[0].Str;
+
+                gameData.typings.Add(typing);
+            }
+        }
+
+        /// <summary>
         ///  Overwrites GlobalData with parsed Abilities.
         /// </summary>
         private static async Task ParseAbilities()
@@ -342,6 +458,24 @@ namespace ImpostersOrdeal
                 Ability ability = new();
                 ability.abilityID = abilityID;
                 ability.name = Encoding.UTF8.GetString(abilityFields[abilityID].children[6].children[0].children[0].children[4].value.value.asString);
+
+                gameData.abilities.Add(ability);
+            }
+        }
+
+        /// <summary>
+        ///  Overwrites GlobalData with parsed yaml Abilities.
+        /// </summary>
+        private static async Task ParseAbilitiesYAML()
+        {
+            gameData.abilities = new();
+            var abilityFields = await FindLabelArrayOfYAMLMessageFileAsync("ss_tokusei", Language.English);
+
+            for (int abilityID = 0; abilityID < abilityFields.Length; abilityID++)
+            {
+                Ability ability = new();
+                ability.abilityID = abilityID;
+                ability.name = abilityFields[abilityID].WordDataArray[0].Str;
 
                 gameData.abilities.Add(ability);
             }
@@ -416,7 +550,7 @@ namespace ImpostersOrdeal
             AssetTypeValueField[] ugPokemonDataFields = monoBehaviours.Find(m => Encoding.Default.GetString(m.children[3].value.value.asString) == "UgPokemonData").children[4].children[0].children;
             for (int ugPokemonDataIdx = 0; ugPokemonDataIdx < ugPokemonDataFields.Length; ugPokemonDataIdx++)
             {
-                UgPokemonData ugPokemonData = new();
+                GameDataTypes.UgPokemonData ugPokemonData = new();
                 ugPokemonData.monsno = ugPokemonDataFields[ugPokemonDataIdx]["monsno"].GetValue().AsInt();
                 ugPokemonData.type1ID = ugPokemonDataFields[ugPokemonDataIdx]["type1ID"].GetValue().AsInt();
                 ugPokemonData.type2ID = ugPokemonDataFields[ugPokemonDataIdx]["type2ID"].GetValue().AsInt();
@@ -438,6 +572,116 @@ namespace ImpostersOrdeal
                 for (int i = 0; i < ugPokemonData.flagrate.Length; i++)
                     ugPokemonData.flagrate[i] = ugPokemonDataFields[ugPokemonDataIdx]["flagrate"][0][i].GetValue().AsInt();
                 ugPokemonData.rateup = ugPokemonDataFields[ugPokemonDataIdx]["rateup"].GetValue().AsInt();
+
+                gameData.ugPokemonData.Add(ugPokemonData);
+            }
+        }
+
+        /// <summary>
+        ///  Overwrites GlobalData with parsed yaml underground data.
+        /// </summary>
+        private static async Task ParseUgTablesYAML()
+        {
+            gameData.ugAreas = new();
+            gameData.ugEncounterFiles = new();
+            gameData.ugEncounterLevelSets = new();
+            gameData.ugSpecialEncounters = new();
+            gameData.ugPokemonData = new();
+            var monoBehaviours = await yamlCollection[PathEnum.Ugdata];
+
+            var ugAreaFields = (monoBehaviours.Find(y => y.MonoBehaviour?.Name == "UgRandMark").MonoBehaviour as UgRandMark).Table;
+            for (int ugAreaIdx = 0; ugAreaIdx < ugAreaFields.Length; ugAreaIdx++)
+            {
+                UgArea ugArea = new()
+                {
+                    id = ugAreaFields[ugAreaIdx].ID,
+                    fileName = ugAreaFields[ugAreaIdx].FileName,
+                };
+
+                gameData.ugAreas.Add(ugArea);
+            }
+
+            var ugEncounterFiles = monoBehaviours.Select(y => y.MonoBehaviour).OfType<UgEncount>().ToList();
+            for (int ugEncounterFileIdx = 0; ugEncounterFileIdx < ugEncounterFiles.Count; ugEncounterFileIdx++)
+            {
+                UgEncounterFile ugEncounterFile = new();
+                ugEncounterFile.mName = ugEncounterFiles[ugEncounterFileIdx].Name;
+
+                ugEncounterFile.ugEncounters = new();
+                var ugMonFields = ugEncounterFiles[ugEncounterFileIdx].Table;
+                for (int ugMonIdx = 0; ugMonIdx < ugMonFields.Length; ugMonIdx++)
+                {
+                    UgEncounter ugEncounter = new()
+                    {
+                        dexID = ugMonFields[ugMonIdx].Monsno,
+                        version = ugMonFields[ugMonIdx].Version,
+                        zukanFlag = ugMonFields[ugMonIdx].ZukanFlag,
+                    };
+
+                    ugEncounterFile.ugEncounters.Add(ugEncounter);
+                }
+
+                gameData.ugEncounterFiles.Add(ugEncounterFile);
+            }
+
+            var ugEncounterLevelFields = (monoBehaviours.Find(y => y.MonoBehaviour?.Name == "UgEncountLevel").MonoBehaviour as UgEncountLevel).Data;
+            for (int ugEncouterLevelIdx = 0; ugEncouterLevelIdx < ugEncounterLevelFields.Length; ugEncouterLevelIdx++)
+            {
+                UgEncounterLevelSet ugLevels = new()
+                {
+                    minLv = ugEncounterLevelFields[ugEncouterLevelIdx].MinLv,
+                    maxLv = ugEncounterLevelFields[ugEncouterLevelIdx].MaxLv,
+                };
+
+                gameData.ugEncounterLevelSets.Add(ugLevels);
+            }
+
+            var ugSpecialEncounterFields = (monoBehaviours.Find(y => y.MonoBehaviour?.Name == "UgSpecialPokemon").MonoBehaviour as UgSpecialPokemon).Sheet1;
+            for (int ugSpecialEncounterIdx = 0; ugSpecialEncounterIdx < ugSpecialEncounterFields.Length; ugSpecialEncounterIdx++)
+            {
+                UgSpecialEncounter ugSpecialEncounter = new()
+                {
+                    id = ugSpecialEncounterFields[ugSpecialEncounterIdx].ID,
+                    dexID = ugSpecialEncounterFields[ugSpecialEncounterIdx].Monsno,
+                    version = ugSpecialEncounterFields[ugSpecialEncounterIdx].Version,
+                    dRate = ugSpecialEncounterFields[ugSpecialEncounterIdx].DSpecialRate,
+                    pRate = ugSpecialEncounterFields[ugSpecialEncounterIdx].PSpecialRate,
+                };
+
+                gameData.ugSpecialEncounters.Add(ugSpecialEncounter);
+            }
+
+            var ugPokemonDataFields = (monoBehaviours.Find(y => y.MonoBehaviour?.Name == "UgPokemonData").MonoBehaviour as UgPokemonData).Table;
+            for (int ugPokemonDataIdx = 0; ugPokemonDataIdx < ugPokemonDataFields.Length; ugPokemonDataIdx++)
+            {
+                GameDataTypes.UgPokemonData ugPokemonData = new();
+                ugPokemonData.monsno = ugPokemonDataFields[ugPokemonDataIdx].Monsno;
+                ugPokemonData.type1ID = ugPokemonDataFields[ugPokemonDataIdx].Type1ID;
+                ugPokemonData.type2ID = ugPokemonDataFields[ugPokemonDataIdx].Type2ID;
+                ugPokemonData.size = ugPokemonDataFields[ugPokemonDataIdx].Size;
+                ugPokemonData.movetype = ugPokemonDataFields[ugPokemonDataIdx].MoveType;
+
+                ugPokemonData.reactioncode = new int[2];
+                for (int i = 0; i < ugPokemonData.reactioncode.Length; i++)
+                    ugPokemonData.reactioncode[i] = ugPokemonDataFields[ugPokemonDataIdx].Reaction[i];
+
+                ugPokemonData.moveRate = new int[2];
+                for (int i = 0; i < ugPokemonData.moveRate.Length; i++)
+                    ugPokemonData.moveRate[i] = ugPokemonDataFields[ugPokemonDataIdx].MoveRate[i];
+
+                ugPokemonData.submoveRate = new int[5];
+                for (int i = 0; i < ugPokemonData.submoveRate.Length; i++)
+                    ugPokemonData.submoveRate[i] = ugPokemonDataFields[ugPokemonDataIdx].SubmoveRate[i];
+
+                ugPokemonData.reaction = new int[5];
+                for (int i = 0; i < ugPokemonData.reaction.Length; i++)
+                    ugPokemonData.reaction[i] = ugPokemonDataFields[ugPokemonDataIdx].Reaction[i];
+
+                ugPokemonData.flagrate = new int[6];
+                for (int i = 0; i < ugPokemonData.flagrate.Length; i++)
+                    ugPokemonData.flagrate[i] = ugPokemonDataFields[ugPokemonDataIdx].FlagRate[i];
+
+                ugPokemonData.rateup = ugPokemonDataFields[ugPokemonDataIdx].RateUp;
 
                 gameData.ugPokemonData.Add(ugPokemonData);
             }
@@ -515,6 +759,240 @@ namespace ImpostersOrdeal
 
                     trainer.trainerPokemon.Add(pokemon);
                 }
+
+                gameData.trainers.Add(trainer);
+            }
+        }
+
+        /// <summary>
+        ///  Overwrites GlobalData with a parsed yaml Trainer table.
+        /// </summary>
+        private static async Task ParseTrainersYAML()
+        {
+            gameData.trainers = new();
+            var monoBehaviour = (await yamlCollection[PathEnum.DprMasterdatas]).Find(y => y.MonoBehaviour?.Name == "TrainerTable").MonoBehaviour as TrainerTable;
+
+            var nameFields = await FindLabelArrayOfYAMLMessageFileAsync("dp_trainers_name", Language.English);
+            Dictionary<string, string> trainerNames = new();
+            gameData.trainerNames = trainerNames;
+            foreach (var label in nameFields)
+                if (label.WordDataArray.Length > 0)
+                    trainerNames[label.LabelName] = label.WordDataArray[0].Str;
+
+            var trainerFields = monoBehaviour.TrainerData;
+            var trainerPokemonFields = monoBehaviour.TrainerPoke;
+            for (int trainerIdx = 0; trainerIdx < Math.Min(trainerFields.Length, trainerPokemonFields.Length); trainerIdx++)
+            {
+                Trainer trainer = new()
+                {
+                    trainerTypeID = trainerFields[trainerIdx].TypeID,
+                    colorID = trainerFields[trainerIdx].ColorID,
+                    fightType = trainerFields[trainerIdx].FightType,
+                    arenaID = trainerFields[trainerIdx].ArenaID,
+                    effectID = trainerFields[trainerIdx].EffectID,
+                    gold = trainerFields[trainerIdx].Gold,
+                    useItem1 = trainerFields[trainerIdx].UseItem1,
+                    useItem2 = trainerFields[trainerIdx].UseItem2,
+                    useItem3 = trainerFields[trainerIdx].UseItem3,
+                    useItem4 = trainerFields[trainerIdx].UseItem4,
+                    hpRecoverFlag = trainerFields[trainerIdx].HPRecoverFlag,
+                    giftItem = trainerFields[trainerIdx].GiftItem,
+                    nameLabel = trainerFields[trainerIdx].NameLabel,
+                    aiBit = trainerFields[trainerIdx].AIBit,
+                    trainerID = trainerIdx
+                };
+
+                trainer.name = trainerNames[trainer.nameLabel];
+
+                //Parse trainer pokemon
+                trainer.trainerPokemon = new();
+                var pokemonFields = trainerPokemonFields[trainerIdx];
+                
+                if (pokemonFields.P1MonsNo != 0)
+                    trainer.trainerPokemon.Add(new TrainerPokemon
+                    {
+                        dexID = pokemonFields.P1MonsNo,
+                        formID = pokemonFields.P1FormNo,
+                        isRare = pokemonFields.P1IsRare,
+                        level = pokemonFields.P1Level,
+                        sex = pokemonFields.P1Sex,
+                        natureID = pokemonFields.P1Seikaku,
+                        abilityID = pokemonFields.P1Tokusei,
+                        moveID1 = pokemonFields.P1Waza1,
+                        moveID2 = pokemonFields.P1Waza2,
+                        moveID3 = pokemonFields.P1Waza3,
+                        moveID4 = pokemonFields.P1Waza4,
+                        itemID = pokemonFields.P1Item,
+                        ballID = pokemonFields.P1Ball,
+                        seal = pokemonFields.P1Seal,
+                        hpIV = pokemonFields.P1TalentHp,
+                        atkIV = pokemonFields.P1TalentAtk,
+                        defIV = pokemonFields.P1TalentDef,
+                        spAtkIV = pokemonFields.P1TalentSpAtk,
+                        spDefIV = pokemonFields.P1TalentSpDef,
+                        spdIV = pokemonFields.P1TalentAgi,
+                        hpEV = pokemonFields.P1EffortHp,
+                        atkEV = pokemonFields.P1EffortAtk,
+                        defEV = pokemonFields.P1EffortDef,
+                        spAtkEV = pokemonFields.P1EffortSpAtk,
+                        spDefEV = pokemonFields.P1EffortSpDef,
+                        spdEV = pokemonFields.P1EffortAgi,
+                    });
+
+                if (pokemonFields.P2MonsNo != 0)
+                    trainer.trainerPokemon.Add(new TrainerPokemon
+                    {
+                        dexID = pokemonFields.P2MonsNo,
+                        formID = pokemonFields.P2FormNo,
+                        isRare = pokemonFields.P2IsRare,
+                        level = pokemonFields.P2Level,
+                        sex = pokemonFields.P2Sex,
+                        natureID = pokemonFields.P2Seikaku,
+                        abilityID = pokemonFields.P2Tokusei,
+                        moveID1 = pokemonFields.P2Waza1,
+                        moveID2 = pokemonFields.P2Waza2,
+                        moveID3 = pokemonFields.P2Waza3,
+                        moveID4 = pokemonFields.P2Waza4,
+                        itemID = pokemonFields.P2Item,
+                        ballID = pokemonFields.P2Ball,
+                        seal = pokemonFields.P2Seal,
+                        hpIV = pokemonFields.P2TalentHp,
+                        atkIV = pokemonFields.P2TalentAtk,
+                        defIV = pokemonFields.P2TalentDef,
+                        spAtkIV = pokemonFields.P2TalentSpAtk,
+                        spDefIV = pokemonFields.P2TalentSpDef,
+                        spdIV = pokemonFields.P2TalentAgi,
+                        hpEV = pokemonFields.P2EffortHp,
+                        atkEV = pokemonFields.P2EffortAtk,
+                        defEV = pokemonFields.P2EffortDef,
+                        spAtkEV = pokemonFields.P2EffortSpAtk,
+                        spDefEV = pokemonFields.P2EffortSpDef,
+                        spdEV = pokemonFields.P2EffortAgi,
+                    });
+
+                if (pokemonFields.P3MonsNo != 0)
+                    trainer.trainerPokemon.Add(new TrainerPokemon
+                    {
+                        dexID = pokemonFields.P3MonsNo,
+                        formID = pokemonFields.P3FormNo,
+                        isRare = pokemonFields.P3IsRare,
+                        level = pokemonFields.P3Level,
+                        sex = pokemonFields.P3Sex,
+                        natureID = pokemonFields.P3Seikaku,
+                        abilityID = pokemonFields.P3Tokusei,
+                        moveID1 = pokemonFields.P3Waza1,
+                        moveID2 = pokemonFields.P3Waza2,
+                        moveID3 = pokemonFields.P3Waza3,
+                        moveID4 = pokemonFields.P3Waza4,
+                        itemID = pokemonFields.P3Item,
+                        ballID = pokemonFields.P3Ball,
+                        seal = pokemonFields.P3Seal,
+                        hpIV = pokemonFields.P3TalentHp,
+                        atkIV = pokemonFields.P3TalentAtk,
+                        defIV = pokemonFields.P3TalentDef,
+                        spAtkIV = pokemonFields.P3TalentSpAtk,
+                        spDefIV = pokemonFields.P3TalentSpDef,
+                        spdIV = pokemonFields.P3TalentAgi,
+                        hpEV = pokemonFields.P3EffortHp,
+                        atkEV = pokemonFields.P3EffortAtk,
+                        defEV = pokemonFields.P3EffortDef,
+                        spAtkEV = pokemonFields.P3EffortSpAtk,
+                        spDefEV = pokemonFields.P3EffortSpDef,
+                        spdEV = pokemonFields.P3EffortAgi,
+                    });
+
+                if (pokemonFields.P4MonsNo != 0)
+                    trainer.trainerPokemon.Add(new TrainerPokemon
+                    {
+                        dexID = pokemonFields.P4MonsNo,
+                        formID = pokemonFields.P4FormNo,
+                        isRare = pokemonFields.P4IsRare,
+                        level = pokemonFields.P4Level,
+                        sex = pokemonFields.P4Sex,
+                        natureID = pokemonFields.P4Seikaku,
+                        abilityID = pokemonFields.P4Tokusei,
+                        moveID1 = pokemonFields.P4Waza1,
+                        moveID2 = pokemonFields.P4Waza2,
+                        moveID3 = pokemonFields.P4Waza3,
+                        moveID4 = pokemonFields.P4Waza4,
+                        itemID = pokemonFields.P4Item,
+                        ballID = pokemonFields.P4Ball,
+                        seal = pokemonFields.P4Seal,
+                        hpIV = pokemonFields.P4TalentHp,
+                        atkIV = pokemonFields.P4TalentAtk,
+                        defIV = pokemonFields.P4TalentDef,
+                        spAtkIV = pokemonFields.P4TalentSpAtk,
+                        spDefIV = pokemonFields.P4TalentSpDef,
+                        spdIV = pokemonFields.P4TalentAgi,
+                        hpEV = pokemonFields.P4EffortHp,
+                        atkEV = pokemonFields.P4EffortAtk,
+                        defEV = pokemonFields.P4EffortDef,
+                        spAtkEV = pokemonFields.P4EffortSpAtk,
+                        spDefEV = pokemonFields.P4EffortSpDef,
+                        spdEV = pokemonFields.P4EffortAgi,
+                    });
+
+                if (pokemonFields.P5MonsNo != 0)
+                    trainer.trainerPokemon.Add(new TrainerPokemon
+                    {
+                        dexID = pokemonFields.P5MonsNo,
+                        formID = pokemonFields.P5FormNo,
+                        isRare = pokemonFields.P5IsRare,
+                        level = pokemonFields.P5Level,
+                        sex = pokemonFields.P5Sex,
+                        natureID = pokemonFields.P5Seikaku,
+                        abilityID = pokemonFields.P5Tokusei,
+                        moveID1 = pokemonFields.P5Waza1,
+                        moveID2 = pokemonFields.P5Waza2,
+                        moveID3 = pokemonFields.P5Waza3,
+                        moveID4 = pokemonFields.P5Waza4,
+                        itemID = pokemonFields.P5Item,
+                        ballID = pokemonFields.P5Ball,
+                        seal = pokemonFields.P5Seal,
+                        hpIV = pokemonFields.P5TalentHp,
+                        atkIV = pokemonFields.P5TalentAtk,
+                        defIV = pokemonFields.P5TalentDef,
+                        spAtkIV = pokemonFields.P5TalentSpAtk,
+                        spDefIV = pokemonFields.P5TalentSpDef,
+                        spdIV = pokemonFields.P5TalentAgi,
+                        hpEV = pokemonFields.P5EffortHp,
+                        atkEV = pokemonFields.P5EffortAtk,
+                        defEV = pokemonFields.P5EffortDef,
+                        spAtkEV = pokemonFields.P5EffortSpAtk,
+                        spDefEV = pokemonFields.P5EffortSpDef,
+                        spdEV = pokemonFields.P5EffortAgi,
+                    });
+
+                if (pokemonFields.P6MonsNo != 0)
+                    trainer.trainerPokemon.Add(new TrainerPokemon
+                    {
+                        dexID = pokemonFields.P6MonsNo,
+                        formID = pokemonFields.P6FormNo,
+                        isRare = pokemonFields.P6IsRare,
+                        level = pokemonFields.P6Level,
+                        sex = pokemonFields.P6Sex,
+                        natureID = pokemonFields.P6Seikaku,
+                        abilityID = pokemonFields.P6Tokusei,
+                        moveID1 = pokemonFields.P6Waza1,
+                        moveID2 = pokemonFields.P6Waza2,
+                        moveID3 = pokemonFields.P6Waza3,
+                        moveID4 = pokemonFields.P6Waza4,
+                        itemID = pokemonFields.P6Item,
+                        ballID = pokemonFields.P6Ball,
+                        seal = pokemonFields.P6Seal,
+                        hpIV = pokemonFields.P6TalentHp,
+                        atkIV = pokemonFields.P6TalentAtk,
+                        defIV = pokemonFields.P6TalentDef,
+                        spAtkIV = pokemonFields.P6TalentSpAtk,
+                        spDefIV = pokemonFields.P6TalentSpDef,
+                        spdIV = pokemonFields.P6TalentAgi,
+                        hpEV = pokemonFields.P6EffortHp,
+                        atkEV = pokemonFields.P6EffortAtk,
+                        defEV = pokemonFields.P6EffortDef,
+                        spAtkEV = pokemonFields.P6EffortSpAtk,
+                        spDefEV = pokemonFields.P6EffortSpDef,
+                        spdEV = pokemonFields.P6EffortAgi,
+                    });
 
                 gameData.trainers.Add(trainer);
             }
@@ -622,6 +1100,123 @@ namespace ImpostersOrdeal
                 pokemon.spAtkEV = pokemonFields[pokemonIdx].children[24].value.value.asUInt8;
                 pokemon.spDefEV = pokemonFields[pokemonIdx].children[25].value.value.asUInt8;
                 pokemon.spdEV = pokemonFields[pokemonIdx].children[26].value.value.asUInt8;
+                gameData.battleTowerTrainerPokemons.Add(pokemon);
+            }
+
+        }
+
+        /// <summary>
+        ///  Overwrites GlobalData with a parsed yaml Battle Tower Trainer table.
+        /// </summary>
+        private static async Task ParseBattleTowerTrainersYAML()
+        {
+            gameData.battleTowerTrainers = new();
+            gameData.battleTowerTrainersDouble = new();
+            gameData.battleTowerTrainerPokemons = new();
+
+            var towerTrainers = (await yamlCollection[PathEnum.DprMasterdatas]).Find(y => y.MonoBehaviour?.Name == "TowerTrainerTable").MonoBehaviour as TowerTrainerTable;
+            var singleStock = (await yamlCollection[PathEnum.DprMasterdatas]).Find(y => y.MonoBehaviour?.Name == "TowerSingleStockTable").MonoBehaviour as TowerSingleStockTable;
+            var doubleStock = (await yamlCollection[PathEnum.DprMasterdatas]).Find(y => y.MonoBehaviour?.Name == "TowerDoubleStockTable").MonoBehaviour as TowerDoubleStockTable;
+
+            var nameFields = await FindLabelArrayOfYAMLMessageFileAsync("dp_trainers_name", Language.English);
+            Dictionary<string, string> trainerNames = new();
+            gameData.trainerNames = trainerNames;
+            foreach (var label in nameFields)
+                if (label.WordDataArray.Length > 0)
+                    trainerNames[label.LabelName] = label.WordDataArray[0].Str;
+
+            var trainerFields = singleStock.TowerSingleStock;
+            var trainerFieldsDouble = doubleStock.TowerDoubleStock;
+            var pokemonFields = towerTrainers.TrainerPoke;
+            var nameFieldsTower = towerTrainers.TrainerData;
+
+            //Single battle parser
+            for (int trainerIdx = 0; trainerIdx < trainerFields.Length; trainerIdx++)
+            {
+                BattleTowerTrainer trainer = new();
+                trainer.trainerID2 = trainerFields[trainerIdx].ID;
+                trainer.trainerTypeID = trainerFields[trainerIdx].TrainerID;
+                trainer.trainerTypeID2 = -1;
+                trainer.battleTowerPokemonID1 = trainerFields[trainerIdx].PokeID[0];
+                trainer.battleTowerPokemonID2 = trainerFields[trainerIdx].PokeID[1];
+                trainer.battleTowerPokemonID3 = trainerFields[trainerIdx].PokeID[2];
+                trainer.battleTowerPokemonID4 = 0;
+                trainer.battleBGM = trainerFields[trainerIdx].BattleBGM;
+                trainer.winBGM = trainerFields[trainerIdx].WinBGM;
+                trainer.nameLabel = nameFieldsTower[trainer.trainerTypeID].NameLabel;
+                trainer.name = trainerNames[trainer.nameLabel];
+                trainer.nameLabel2 = null;
+                trainer.name2 = null;
+                trainer.isDouble = false;
+
+                gameData.battleTowerTrainers.Add(trainer);
+            }
+
+            //Double battle parser
+            for (int trainerIdx = 0; trainerIdx < trainerFieldsDouble.Length; trainerIdx++)
+            {
+                BattleTowerTrainer trainer = new();
+                trainer.trainerID2 = trainerFieldsDouble[trainerIdx].ID;
+                trainer.trainerTypeID = trainerFieldsDouble[trainerIdx].TrainerID[0];
+                trainer.trainerTypeID2 = trainerFieldsDouble[trainerIdx].TrainerID[1];
+                trainer.battleTowerPokemonID1 = trainerFieldsDouble[trainerIdx].PokeID[0];
+                trainer.battleTowerPokemonID2 = trainerFieldsDouble[trainerIdx].PokeID[1];
+                trainer.battleTowerPokemonID3 = trainerFieldsDouble[trainerIdx].PokeID[2];
+                trainer.battleTowerPokemonID4 = trainerFieldsDouble[trainerIdx].PokeID[3];
+                trainer.battleBGM = trainerFieldsDouble[trainerIdx].BattleBGM;
+                trainer.winBGM = trainerFieldsDouble[trainerIdx].WinBGM;
+                trainer.nameLabel = nameFieldsTower[trainer.trainerTypeID].NameLabel;
+                trainer.name = trainerNames[trainer.nameLabel];
+
+                if (trainer.trainerTypeID2 != -1)
+                {
+                    trainer.nameLabel2 = nameFieldsTower[trainer.trainerTypeID2].NameLabel;
+                    trainer.name2 = trainerNames[trainer.nameLabel2];
+                }
+                else
+                {
+                    trainer.nameLabel2 = null;
+                    trainer.name2 = null;
+                }
+                trainer.isDouble = true;
+
+                gameData.battleTowerTrainersDouble.Add(trainer);
+            }
+
+            //Parse battle tower trainer pokemon
+            for (int pokemonIdx = 0; pokemonIdx < pokemonFields.Length && pokemonFields[pokemonIdx].ID != 0; pokemonIdx++)
+            {
+                BattleTowerTrainerPokemon pokemon = new()
+                {
+                    pokemonID = pokemonFields[pokemonIdx].ID,
+                    dexID = pokemonFields[pokemonIdx].MonsNo,
+                    formID = pokemonFields[pokemonIdx].FormNo,
+                    isRare = pokemonFields[pokemonIdx].IsRare,
+                    level = pokemonFields[pokemonIdx].Level,
+                    sex = pokemonFields[pokemonIdx].Sex,
+                    natureID = pokemonFields[pokemonIdx].Seikaku,
+                    abilityID = pokemonFields[pokemonIdx].Tokusei,
+                    moveID1 = pokemonFields[pokemonIdx].Waza1,
+                    moveID2 = pokemonFields[pokemonIdx].Waza2,
+                    moveID3 = pokemonFields[pokemonIdx].Waza3,
+                    moveID4 = pokemonFields[pokemonIdx].Waza4,
+                    itemID = pokemonFields[pokemonIdx].Item,
+                    ballID = pokemonFields[pokemonIdx].Ball,
+                    seal = pokemonFields[pokemonIdx].Seal,
+                    hpIV = pokemonFields[pokemonIdx].TalentHP,
+                    atkIV = pokemonFields[pokemonIdx].TalentAtk,
+                    defIV = pokemonFields[pokemonIdx].TalentDef,
+                    spAtkIV = pokemonFields[pokemonIdx].TalentSpAtk,
+                    spDefIV = pokemonFields[pokemonIdx].TalentSpDef,
+                    spdIV = pokemonFields[pokemonIdx].TalentAgi,
+                    hpEV = pokemonFields[pokemonIdx].EffortHP,
+                    atkEV = pokemonFields[pokemonIdx].EffortAtk,
+                    defEV = pokemonFields[pokemonIdx].EffortDef,
+                    spAtkEV = pokemonFields[pokemonIdx].EffortSpAtk,
+                    spDefEV = pokemonFields[pokemonIdx].EffortSpDef,
+                    spdEV = pokemonFields[pokemonIdx].EffortAgi,
+                };
+
                 gameData.battleTowerTrainerPokemons.Add(pokemon);
             }
 
@@ -743,8 +1338,8 @@ namespace ImpostersOrdeal
             List<YamlMonoContainer> monoBehaviours = await yamlCollection[PathEnum.Gamesettings];
             FieldEncountTable[] encounterTableMonoBehaviours = new FieldEncountTable[2]
             {
-                monoBehaviours.Find(m => m.MonoBehaviour.Name == "FieldEncountTable_d").MonoBehaviour as FieldEncountTable,
-                monoBehaviours.Find(m => m.MonoBehaviour.Name == "FieldEncountTable_p").MonoBehaviour as FieldEncountTable,
+                monoBehaviours.Find(m => m.MonoBehaviour?.Name == "FieldEncountTable_d").MonoBehaviour as FieldEncountTable,
+                monoBehaviours.Find(m => m.MonoBehaviour?.Name == "FieldEncountTable_p").MonoBehaviour as FieldEncountTable,
             };
 
             for (int encounterTableFileIdx = 0; encounterTableFileIdx < encounterTableMonoBehaviours.Length; encounterTableFileIdx++)
@@ -1022,12 +1617,171 @@ namespace ImpostersOrdeal
             SetLegendaries();
         }
 
+        /// <summary>
+        ///  Overwrites GlobalData with parsed yaml DexEntries and PersonalEntries.
+        /// </summary>
+        private static async Task ParsePokemonYAML()
+        {
+            gameData.dexEntries = new();
+            gameData.personalEntries = new();
+            var monoBehaviours = (await yamlCollection[PathEnum.PersonalMasterdatas]);
+
+            var levelUpMoveFields = (monoBehaviours.Find(y => y.MonoBehaviour?.Name == "WazaOboeTable").MonoBehaviour as WazaOboeTable).WazaOboe;
+            var eggMoveFields = (monoBehaviours.Find(y => y.MonoBehaviour?.Name == "TamagoWazaTable").MonoBehaviour as TamagoWazaTable).Data;
+            var evolveFields = (monoBehaviours.Find(y => y.MonoBehaviour?.Name == "EvolveTable").MonoBehaviour as EvolveTable).Evolve;
+            var personalFields = (monoBehaviours.Find(y => y.MonoBehaviour?.Name == "PersonalTable").MonoBehaviour as PersonalTable).Personal;
+            var textFields = await FindLabelArrayOfYAMLMessageFileAsync("ss_monsname", Language.English);
+
+            if (levelUpMoveFields.Length < personalFields.Length)
+                MainForm.ShowParserError("Oh my, this WazaOboeTable is missing some stuff...\n" +
+                    "I don't feel so good...\n" +
+                    "PersonalTable entries: " + personalFields.Length + "\n" +
+                    "WazaOboeTable entries: " + levelUpMoveFields.Length + "??");
+            if (eggMoveFields.Length < personalFields.Length)
+                MainForm.ShowParserError("Oh my, this TamagoWazaTable is missing some stuff...\n" +
+                    "I don't feel so good...\n" +
+                    "PersonalTable entries: " + personalFields.Length + "\n" +
+                    "TamagoWazaTable entries: " + eggMoveFields.Length + "??");
+            if (evolveFields.Length < personalFields.Length)
+                MainForm.ShowParserError("Oh my, this EvolveTable is missing some stuff...\n" +
+                    "I don't feel so good...\n" +
+                    "PersonalTable entries: " + personalFields.Length + "\n" +
+                    "EvolveTable entries: " + evolveFields.Length + "??");
+
+            for (int personalID = 0; personalID < personalFields.Length; personalID++)
+            {
+                Pokemon pokemon = new()
+                {
+                    validFlag = personalFields[personalID].ValidFlag,
+                    personalID = personalFields[personalID].ID,
+                    dexID = personalFields[personalID].Monsno,
+                    formIndex = personalFields[personalID].FormIndex,
+                    formMax = personalFields[personalID].FormMax,
+                    color = personalFields[personalID].Color,
+                    graNo = personalFields[personalID].GraNo,
+                    basicHp = personalFields[personalID].BasicHP,
+                    basicAtk = personalFields[personalID].BasicAtk,
+                    basicDef = personalFields[personalID].BasicDef,
+                    basicSpd = personalFields[personalID].BasicAgi,
+                    basicSpAtk = personalFields[personalID].BasicSpatk,
+                    basicSpDef = personalFields[personalID].BasicSpdef,
+                    typingID1 = personalFields[personalID].Type1,
+                    typingID2 = personalFields[personalID].Type2,
+                    getRate = personalFields[personalID].GetRate,
+                    rank = personalFields[personalID].Rank,
+                    expValue = personalFields[personalID].ExpValue,
+                    item1 = personalFields[personalID].Item1,
+                    item2 = personalFields[personalID].Item2,
+                    item3 = personalFields[personalID].Item3,
+                    sex = personalFields[personalID].Sex,
+                    eggBirth = personalFields[personalID].EggBirth,
+                    initialFriendship = personalFields[personalID].InitialFriendship,
+                    eggGroup1 = personalFields[personalID].EggGroup1,
+                    eggGroup2 = personalFields[personalID].EggGroup2,
+                    grow = personalFields[personalID].Grow,
+                    abilityID1 = personalFields[personalID].Tokusei1,
+                    abilityID2 = personalFields[personalID].Tokusei2,
+                    abilityID3 = personalFields[personalID].Tokusei3,
+                    giveExp = personalFields[personalID].GiveExp,
+                    height = personalFields[personalID].Height,
+                    weight = personalFields[personalID].Weight,
+                    chihouZukanNo = personalFields[personalID].ChihouZukanNo,
+                    machine1 = personalFields[personalID].Machine1,
+                    machine2 = personalFields[personalID].Machine2,
+                    machine3 = personalFields[personalID].Machine3,
+                    machine4 = personalFields[personalID].Machine4,
+                    hiddenMachine = personalFields[personalID].HidenMachine,
+                    eggMonsno = personalFields[personalID].EggMonsno,
+                    eggFormno = personalFields[personalID].EggFormno,
+                    eggFormnoKawarazunoishi = personalFields[personalID].EggFormnoKawarazunoishi,
+                    eggFormInheritKawarazunoishi = personalFields[personalID].EggFormInheritKawarazunoishi,
+                };
+
+                pokemon.formID = 0;
+                if (pokemon.personalID != pokemon.dexID)
+                    pokemon.formID = pokemon.personalID - pokemon.formIndex + 1;
+
+                pokemon.name = "";
+                if (textFields[pokemon.dexID].WordDataArray.Length > 0)
+                    pokemon.name = textFields[pokemon.dexID].WordDataArray[0].Str;
+
+                pokemon.nextEvoLvs = (ushort.MaxValue, ushort.MaxValue); //(wildLevel, trainerLevel)
+                pokemon.pastPokemon = new();
+                pokemon.nextPokemon = new();
+                pokemon.inferiorForms = new();
+                pokemon.superiorForms = new();
+
+                //Parse level up moves
+                pokemon.levelUpMoves = new();
+                for (int levelUpMoveIdx = 0; levelUpMoveIdx < levelUpMoveFields[personalID].Ar.Length; levelUpMoveIdx += 2)
+                {
+                    LevelUpMove levelUpMove = new()
+                    {
+                        level = levelUpMoveFields[personalID].Ar[levelUpMoveIdx],
+                        moveID = levelUpMoveFields[personalID].Ar[levelUpMoveIdx + 1],
+                    };
+
+                    pokemon.levelUpMoves.Add(levelUpMove);
+                }
+
+                //Parse egg moves
+                pokemon.eggMoves = new();
+                for (int eggMoveIdx = 0; eggMoveIdx < eggMoveFields[personalID].WazaNo.Length; eggMoveIdx++)
+                    pokemon.eggMoves.Add(eggMoveFields[personalID].WazaNo[eggMoveIdx]);
+
+                //Parse evolutions
+                pokemon.evolutionPaths = new();
+                for (int evolutionIdx = 0; evolutionIdx < evolveFields[personalID].Ar.Length; evolutionIdx += 5)
+                {
+                    EvolutionPath evolution = new()
+                    {
+                        method = evolveFields[personalID].Ar[evolutionIdx],
+                        parameter = evolveFields[personalID].Ar[evolutionIdx + 1],
+                        destDexID = evolveFields[personalID].Ar[evolutionIdx + 2],
+                        destFormID = evolveFields[personalID].Ar[evolutionIdx + 3],
+                        level = evolveFields[personalID].Ar[evolutionIdx + 4]
+                    };
+
+                    pokemon.evolutionPaths.Add(evolution);
+                }
+
+                pokemon.externalTMLearnset = fileManager.TryGetExternalJson<TMLearnset>(
+                    $"MonData\\TMLearnset\\monsno_{pokemon.dexID}_formno_{pokemon.formID}.json");
+
+                gameData.personalEntries.Add(pokemon);
+
+                if (gameData.dexEntries.Count == pokemon.dexID)
+                {
+                    gameData.dexEntries.Add(new());
+                    gameData.dexEntries[pokemon.dexID].dexID = pokemon.dexID;
+                    gameData.dexEntries[pokemon.dexID].forms = new();
+                    gameData.dexEntries[pokemon.dexID].name = pokemon.name;
+                }
+
+                gameData.dexEntries[pokemon.dexID].forms.Add(pokemon);
+            }
+
+            SetFamilies();
+            SetLegendariesYAML();
+        }
+
         private static async void SetLegendaries()
         {
             AssetTypeValueField[] legendFields = (await monoBehaviourCollection[PathEnum.Gamesettings]).Find(m => Encoding.Default.GetString(m.children[3].value.value.asString) == "FieldEncountTable_d").children[10].children[0].children;
             for (int legendEntryIdx = 0; legendEntryIdx < legendFields.Length; legendEntryIdx++)
             {
                 List<Pokemon> forms = gameData.dexEntries[legendFields[legendEntryIdx].children[0].value.value.asInt32].forms;
+                for (int formID = 0; formID < forms.Count; formID++)
+                    forms[formID].legendary = true;
+            }
+        }
+
+        private static async void SetLegendariesYAML()
+        {
+            var legendFields = ((await yamlCollection[PathEnum.Gamesettings]).Find(y => y.MonoBehaviour?.Name == "FieldEncountTable_d").MonoBehaviour as FieldEncountTable).LegendPoke;
+            for (int legendEntryIdx = 0; legendEntryIdx < legendFields.Length; legendEntryIdx++)
+            {
+                List<Pokemon> forms = gameData.dexEntries[legendFields[legendEntryIdx].MonsNo].forms;
                 for (int formID = 0; formID < forms.Count; formID++)
                     forms[formID].legendary = true;
             }
@@ -1232,6 +1986,35 @@ namespace ImpostersOrdeal
                 gameData.tms.Add(tm);
             }
         }
+
+        /// <summary>
+        ///  Overwrites GlobalData with parsed yaml TMs.
+        /// </summary>
+        private static async Task ParseTMsYAML()
+        {
+            gameData.tms = new();
+            var monoBehaviour = (await yamlCollection[PathEnum.PersonalMasterdatas]).Find(y => y.MonoBehaviour?.Name == "ItemTable").MonoBehaviour as ItemTable;
+
+            var tmFields = monoBehaviour.WazaMachine;
+            var textFields = await FindLabelArrayOfYAMLMessageFileAsync("ss_itemname", Language.English);
+            for (int tmID = 0; tmID < tmFields.Length; tmID++)
+            {
+                TM tm = new()
+                {
+                    itemID = tmFields[tmID].ItemNo,
+                    machineNo = tmFields[tmID].MachineNo,
+                    moveID = tmFields[tmID].WazaNo,
+                    tmID = tmID,
+                };
+
+                tm.name = "";
+                if (textFields[tm.itemID].WordDataArray.Length > 0)
+                    tm.name = textFields[tm.itemID].WordDataArray[0].Str;
+
+                gameData.tms.Add(tm);
+            }
+        }
+        
         private static async Task ParsePersonalMasterDatas()
         {
             gameData.addPersonalTables = new();
@@ -1246,6 +2029,26 @@ namespace ImpostersOrdeal
                 addPersonal.isEnableSynchronize = addPersonalTableArray[i]["isEnableSynchronize"].value.value.asUInt8 == 0;
                 addPersonal.escape = addPersonalTableArray[i]["escape"].value.value.asUInt8;
                 addPersonal.isDisableReverce = addPersonalTableArray[i]["isDisableReverce"].value.value.asUInt8 == 0;
+                gameData.addPersonalTables.Add(addPersonal);
+            }
+        }
+        
+        private static async Task ParsePersonalMasterDatasYAML()
+        {
+            gameData.addPersonalTables = new();
+            var addPersonalTableArray = ((await yamlCollection[PathEnum.PersonalMasterdatas]).Find(y => y.MonoBehaviour?.Name == "AddPersonalTable").MonoBehaviour as AddPersonalTable).AddPersonal;
+            for (int i = 0; i < addPersonalTableArray.Length; i++)
+            {
+                PersonalMasterdatas.AddPersonalTable addPersonal = new()
+                {
+                    valid_flag = addPersonalTableArray[i].ValidFlag != 0,
+                    monsno = addPersonalTableArray[i].Monsno,
+                    formno = addPersonalTableArray[i].Formno,
+                    isEnableSynchronize = addPersonalTableArray[i].IsEnableSynchronize == 0,
+                    escape = addPersonalTableArray[i].Escape,
+                    isDisableReverce = addPersonalTableArray[i].IsDisableReverce == 0,
+                };
+
                 gameData.addPersonalTables.Add(addPersonal);
             }
         }
@@ -1372,6 +2175,148 @@ namespace ImpostersOrdeal
             gameData.uiDistributionTable.pearlDungeonTable = ParseDistributionSheet(pearlDungeon);
         }
 
+        private static async Task ParseUIMasterDatasYAML()
+        {
+            gameData.uiPokemonIcon = new();
+            gameData.uiAshiatoIcon = new();
+            gameData.uiPokemonVoice = new();
+            gameData.uiZukanDisplay = new();
+            gameData.uiZukanCompareHeights = new();
+            gameData.uiSearchPokeIconSex = new();
+            gameData.uiDistributionTable = new();
+
+            var uiDatabase = (await yamlCollection[PathEnum.UIMasterdatas]).Find(y => y.MonoBehaviour?.Name == "UIDatabase").MonoBehaviour as UIDatabase;
+            var distributionTable = (await yamlCollection[PathEnum.UIMasterdatas]).Find(y => y.MonoBehaviour?.Name == "DistributionTable").MonoBehaviour as DistributionTable;
+
+            var pokemonIcons = uiDatabase.PokemonIcon;
+            for (int i = 0; i < pokemonIcons.Length; i++)
+            {
+                UIMasterdatas.PokemonIcon pokemonIcon = new()
+                {
+                    uniqueID = pokemonIcons[i].UniqueID,
+                    assetBundleName = pokemonIcons[i].AssetBundleName,
+                    assetName = pokemonIcons[i].AssetName,
+                    assetBundleNameLarge = pokemonIcons[i].AssetBundleNameLarge,
+                    assetNameLarge = pokemonIcons[i].AssetNameLarge,
+                    assetBundleNameDP = pokemonIcons[i].AssetBundleNameDP,
+                    assetNameDP = pokemonIcons[i].AssetNameDP,
+                    hallofFameOffset = new()
+                    {
+                        X = pokemonIcons[i].HallofFameOffset.X,
+                        Y = pokemonIcons[i].HallofFameOffset.Y,
+                    }
+                };
+
+                gameData.uiPokemonIcon.Add(pokemonIcon);
+            }
+
+            var ashiatoIcons = uiDatabase.AshiatoIcon;
+            for (int i = 0; i < ashiatoIcons.Length; i++)
+            {
+                UIMasterdatas.AshiatoIcon ashiatoIcon = new()
+                {
+                    uniqueID = ashiatoIcons[i].UniqueID,
+                    sideIconAssetName = ashiatoIcons[i].SideIconAssetName,
+                    bothIconAssetName = ashiatoIcons[i].BothIconAssetName,
+                };
+
+                gameData.uiAshiatoIcon.Add(ashiatoIcon);
+            }
+
+            var pokemonVoices = uiDatabase.PokemonVoice;
+            for (int i = 0; i < pokemonVoices.Length; i++)
+            {
+                UIMasterdatas.PokemonVoice pokemonVoice = new()
+                {
+                    uniqueID = pokemonVoices[i].UniqueID,
+                    wwiseEvent = pokemonVoices[i].WwiseEvent,
+                    stopEventId = pokemonVoices[i].StopEventId,
+                    centerPointOffset = new()
+                    {
+                        X = pokemonVoices[i].CenterPointOffset.X,
+                        Y = pokemonVoices[i].CenterPointOffset.Y,
+                        Z = pokemonVoices[i].CenterPointOffset.Z,
+                    },
+                    rotationLimits = pokemonVoices[i].RotationLimits == 0,
+                    rotationLimitAngle = new()
+                    {
+                        X = pokemonVoices[i].RotationLimitAngle.X,
+                        Y = pokemonVoices[i].RotationLimitAngle.Y,
+                    }
+                };
+
+                gameData.uiPokemonVoice.Add(pokemonVoice);
+            }
+
+            var zukanDisplays = uiDatabase.ZukanDisplay;
+            for (int i = 0; i < zukanDisplays.Length; i++)
+            {
+                UIMasterdatas.ZukanDisplay zukanDisplay = new()
+                {
+                    uniqueID = zukanDisplays[i].UniqueID,
+                    moveLimit = new()
+                    {
+                        X = zukanDisplays[i].MoveLimit.X,
+                        Y = zukanDisplays[i].MoveLimit.Y,
+                        Z = zukanDisplays[i].MoveLimit.Z,
+                    },
+                    modelOffset = new()
+                    {
+                        X = zukanDisplays[i].ModelOffset.X,
+                        Y = zukanDisplays[i].ModelOffset.Y,
+                        Z = zukanDisplays[i].ModelOffset.Z,
+                    },
+                    modelRotationAngle = new()
+                    {
+                        X = zukanDisplays[i].ModelRotationAngle.X,
+                        Y = zukanDisplays[i].ModelRotationAngle.Y,
+                    }
+                };
+
+                gameData.uiZukanDisplay.Add(zukanDisplay);
+            }
+
+            var zukanCompareHeights = uiDatabase.ZukanCompareHeight;
+            for (int i = 0; i < zukanCompareHeights.Length; i++)
+            {
+                UIMasterdatas.ZukanCompareHeight zukanCompareHeight = new()
+                {
+                    uniqueID = zukanCompareHeights[i].UniqueID,
+                    playerScaleFactor = zukanCompareHeights[i].PlayerScaleFactor,
+                    playerOffset = new()
+                    {
+                        X = zukanCompareHeights[i].PlayerOffset.X,
+                        Y = zukanCompareHeights[i].PlayerOffset.Y,
+                        Z = zukanCompareHeights[i].PlayerOffset.Z,
+                    },
+                    playerRotationAngle = new()
+                    {
+                        X = zukanCompareHeights[i].PlayerRotationAngle.X,
+                        Y = zukanCompareHeights[i].PlayerRotationAngle.Y,
+                    }
+                };
+
+                gameData.uiZukanCompareHeights.Add(zukanCompareHeight);
+            }
+
+            var searchPokeIconSexes = uiDatabase.SearchPokeIconSex;
+            for (int i = 0; i < searchPokeIconSexes.Length; i++)
+            {
+                UIMasterdatas.SearchPokeIconSex searchPokeIconSex = new()
+                {
+                    monsNo = searchPokeIconSexes[i].MonsNo,
+                    sex = searchPokeIconSexes[i].Sex,
+                };
+
+                gameData.uiSearchPokeIconSex.Add(searchPokeIconSex);
+            }
+
+            gameData.uiDistributionTable.diamondFieldTable = ParseDistributionSheetYAML(distributionTable.DiamondFieldTable);
+            gameData.uiDistributionTable.diamondDungeonTable = ParseDistributionSheetYAML(distributionTable.DiamondDungeonTable);
+            gameData.uiDistributionTable.pearlFieldTable = ParseDistributionSheetYAML(distributionTable.PearlFieldTable);
+            gameData.uiDistributionTable.pearlDungeonTable = ParseDistributionSheetYAML(distributionTable.PearlDungeonTable);
+        }
+
         private static List<UIMasterdatas.DistributionEntry> ParseDistributionSheet(AssetTypeValueField[] sheetATVF)
         {
             List<UIMasterdatas.DistributionEntry> sheet = new();
@@ -1388,6 +2333,28 @@ namespace ImpostersOrdeal
                     fishing = ParseDistributionCoord(sheetATVF[i]["Fishing"]),
                     pokemonTraser = ParseDistributionCoord(sheetATVF[i]["PokemonTraser"]),
                     honeyTree = ParseDistributionCoord(sheetATVF[i]["HoneyTree"])
+                };
+                sheet.Add(entry);
+            }
+            return sheet;
+        }
+
+        private static List<UIMasterdatas.DistributionEntry> ParseDistributionSheetYAML(SheetDistributionTable[] sheetTable)
+        {
+            List<UIMasterdatas.DistributionEntry> sheet = new();
+            for (int i = 0; i < sheetTable.Length; i++)
+            {
+                UIMasterdatas.DistributionEntry entry = new()
+                {
+                    beforeMorning = sheetTable[i].BeforeMorning,
+                    beforeDaytime = sheetTable[i].BeforeDaytime,
+                    beforeNight = sheetTable[i].BeforeNight,
+                    afterMorning = sheetTable[i].AfterMorning,
+                    afterDaytime = sheetTable[i].AfterDaytime,
+                    afterNight = sheetTable[i].AfterNight,
+                    fishing = sheetTable[i].Fishing,
+                    pokemonTraser = sheetTable[i].PokemonTraser,
+                    honeyTree = sheetTable[i].HoneyTree,
                 };
                 sheet.Add(entry);
             }
@@ -1540,7 +2507,7 @@ namespace ImpostersOrdeal
                     foreach (AssetTypeValueField atvf in animeIndexATVFS)
                         t.animeIndex.Add(atvf.GetValue().AsInt());
 
-                    AssetTypeValueField[] animeDurationATVFS = trearukiArray[i]["AnimeIndex"].children[0].children;
+                    AssetTypeValueField[] animeDurationATVFS = trearukiArray[i]["AnimeDuration"].children[0].children;
                     foreach (AssetTypeValueField atvf in animeDurationATVFS)
                         t.animeDuration.Add(atvf.GetValue().AsFloat());
                 }
@@ -1548,6 +2515,183 @@ namespace ImpostersOrdeal
                 gameData.pokemonInfos.Add(catalog);
             }
         }
+
+        private static async Task ParseMasterDatasYAML()
+        {
+            gameData.pokemonInfos = new();
+            var pokemonInfo = (await yamlCollection[PathEnum.DprMasterdatas]).Find(y => y.MonoBehaviour?.Name == "PokemonInfo").MonoBehaviour as PokemonInfo;
+            var catalogArray = pokemonInfo.Catalog;
+            var trearukiArray = pokemonInfo.Trearuki;
+
+            for (int i = 0; i < catalogArray.Length; i++)
+            {
+                Masterdatas.PokemonInfoCatalog catalog = new();
+                catalog.UniqueID = catalogArray[i].UniqueID;
+                catalog.No = catalogArray[i].No;
+                catalog.SinnohNo = catalogArray[i].SinnohNo;
+                catalog.MonsNo = catalogArray[i].MonsNo;
+                catalog.FormNo = catalogArray[i].FormNo;
+                catalog.Sex = catalogArray[i].Sex;
+                catalog.Rare = catalogArray[i].Rare != 0;
+                catalog.AssetBundleName = catalogArray[i].AssetBundleName;
+                catalog.BattleScale = catalogArray[i].BattleScale;
+                catalog.ContestScale = catalogArray[i].ContestScale;
+                catalog.ContestSize = (Masterdatas.Size)catalogArray[i].ContestSize;
+                catalog.FieldScale = catalogArray[i].FieldScale;
+                catalog.FieldChikaScale = catalogArray[i].FieldChikaScale;
+                catalog.StatueScale = catalogArray[i].StatueScale;
+                catalog.FieldWalkingScale = catalogArray[i].FieldWalkingScale;
+                catalog.FieldFureaiScale = catalogArray[i].FieldFureaiScale;
+                catalog.MenuScale = catalogArray[i].MenuScale;
+                catalog.ModelMotion = catalogArray[i].ModelMotion;
+
+                catalog.ModelOffset = new()
+                {
+                    X = catalogArray[i].ModelOffset.X,
+                    Y = catalogArray[i].ModelOffset.Y,
+                    Z = catalogArray[i].ModelOffset.Z,
+                };
+
+                catalog.ModelRotationAngle = new()
+                {
+                    X = catalogArray[i].ModelRotationAngle.X,
+                    Y = catalogArray[i].ModelRotationAngle.Y,
+                    Z = catalogArray[i].ModelRotationAngle.Z,
+                };
+
+                catalog.DistributionScale = catalogArray[i].DistributionScale;
+                catalog.DistributionModelMotion = catalogArray[i].DistributionModelMotion;
+
+                catalog.DistributionModelOffset = new()
+                {
+                    X = catalogArray[i].DistributionModelOffset.X,
+                    Y = catalogArray[i].DistributionModelOffset.Y,
+                    Z = catalogArray[i].DistributionModelOffset.Z,
+                };
+
+                catalog.DistributionModelRotationAngle = new()
+                {
+                    X = catalogArray[i].DistributionModelRotationAngle.X,
+                    Y = catalogArray[i].DistributionModelRotationAngle.Y,
+                    Z = catalogArray[i].DistributionModelRotationAngle.Z
+                };
+
+                catalog.VoiceScale = catalogArray[i].VoiceScale;
+                catalog.VoiceModelMotion = catalogArray[i].VoiceModelMotion;
+
+                catalog.VoiceModelOffset = new()
+                {
+                    X = catalogArray[i].VoiceModelOffset.X,
+                    Y = catalogArray[i].VoiceModelOffset.Y,
+                    Z = catalogArray[i].VoiceModelOffset.Z,
+                };
+
+                catalog.VoiceModelRotationAngle = new()
+                {
+                    X = catalogArray[i].VoiceModelRotationAngle.X,
+                    Y = catalogArray[i].VoiceModelRotationAngle.Y,
+                    Z = catalogArray[i].VoiceModelRotationAngle.Z,
+                };
+
+                catalog.CenterPointOffset = new()
+                {
+                    X = catalogArray[i].CenterPointOffset.X,
+                    Y = catalogArray[i].CenterPointOffset.Y,
+                    Z = catalogArray[i].CenterPointOffset.Z,
+                };
+
+                catalog.RotationLimitAngle = new()
+                {
+                    X = catalogArray[i].RotationLimitAngle.X,
+                    Y = catalogArray[i].RotationLimitAngle.Y,
+                };
+
+                catalog.StatusScale = catalogArray[i].StatusScale;
+                catalog.StatusModelMotion = catalogArray[i].StatusModelMotion;
+
+                catalog.StatusModelOffset = new()
+                {
+                    X = catalogArray[i].StatusModelOffset.X,
+                    Y = catalogArray[i].StatusModelOffset.Y,
+                    Z = catalogArray[i].StatusModelOffset.Z,
+                };
+
+                catalog.StatusModelRotationAngle = new()
+                {
+                    X = catalogArray[i].StatusModelRotationAngle.X,
+                    Y = catalogArray[i].StatusModelRotationAngle.Y,
+                    Z = catalogArray[i].StatusModelRotationAngle.Z,
+                };
+
+                catalog.BoxScale = catalogArray[i].BoxScale;
+                catalog.BoxModelMotion = catalogArray[i].BoxModelMotion;
+
+                catalog.BoxModelOffset = new()
+                {
+                    X = catalogArray[i].BoxModelOffset.X,
+                    Y = catalogArray[i].BoxModelOffset.Y,
+                    Z = catalogArray[i].BoxModelOffset.Z,
+                };
+
+                catalog.BoxModelRotationAngle = new()
+                {
+                    X = catalogArray[i].BoxModelRotationAngle.X,
+                    Y = catalogArray[i].BoxModelRotationAngle.Y,
+                    Z = catalogArray[i].BoxModelRotationAngle.Z,
+                };
+
+                catalog.CompareScale = catalogArray[i].CompareScale;
+                catalog.CompareModelMotion = catalogArray[i].CompareModelMotion;
+
+                catalog.CompareModelOffset = new()
+                {
+                    X = catalogArray[i].CompareModelOffset.X,
+                    Y = catalogArray[i].CompareModelOffset.Y,
+                    Z = catalogArray[i].CompareModelOffset.Z,
+                };
+
+                catalog.CompareModelRotationAngle = new()
+                {
+                    X = catalogArray[i].CompareModelRotationAngle.X,
+                    Y = catalogArray[i].CompareModelRotationAngle.Y,
+                    Z = catalogArray[i].CompareModelRotationAngle.Z,
+                };
+
+                catalog.BrakeStart = catalogArray[i].BrakeStart;
+                catalog.BrakeEnd = catalogArray[i].BrakeEnd;
+                catalog.WalkSpeed = catalogArray[i].WalkSpeed;
+                catalog.RunSpeed = catalogArray[i].RunSpeed;
+                catalog.WalkStart = catalogArray[i].WalkStart;
+                catalog.RunStart = catalogArray[i].RunStart;
+                catalog.BodySize = catalogArray[i].BodySize;
+                catalog.AppearLimit = catalogArray[i].AppearLimit;
+                catalog.MoveType = (Masterdatas.MoveType)catalogArray[i].MoveType;
+
+                catalog.GroundEffect = catalogArray[i].GroundEffect != 0;
+                catalog.Waitmoving = catalogArray[i].Waitmoving != 0;
+                catalog.BattleAjustHeight = catalogArray[i].BattleAjustHeight;
+
+                Masterdatas.Trearuki t = new()
+                {
+                    enable = trearukiArray[i].Enable != 0,
+                    animeIndex = new(),
+                    animeDuration = new()
+                };
+                catalog.trearuki = t;
+
+                foreach (var animeIndex in trearukiArray[i].AnimeIndex)
+                    t.animeIndex.Add(animeIndex);
+
+                foreach (var animeDuration in trearukiArray[i].AnimeDuration)
+                    t.animeDuration.Add(animeDuration);
+
+                gameData.pokemonInfos.Add(catalog);
+            }
+        }
+
+        /// <summary>
+        ///  Overwrites GlobalData with parsed battle data.
+        /// </summary>
         private static async Task ParseBattleMasterDatas()
         {
             gameData.motionTimingData = new();
@@ -1579,6 +2723,47 @@ namespace ImpostersOrdeal
                 motionTimingData.Guard = motionTimingDataArray[i]["Guard"].value.value.asInt32;
                 motionTimingData.LandingFall = motionTimingDataArray[i]["LandingFall"].value.value.asInt32;
                 motionTimingData.LandingFallEase = motionTimingDataArray[i]["LandingFallEase"].value.value.asInt32;
+
+                gameData.motionTimingData.Add(motionTimingData);
+            }
+        }
+
+        /// <summary>
+        ///  Overwrites GlobalData with parsed yaml battle data.
+        /// </summary>
+        private static async Task ParseBattleMasterDatasYAML()
+        {
+            gameData.motionTimingData = new();
+            var battleDataTable = (await yamlCollection[PathEnum.BattleMasterdatas]).Find(y => y.MonoBehaviour?.Name == "BattleDataTable").MonoBehaviour as BattleDataTable;
+            var motionTimingDataArray = battleDataTable.MotionTimingData;
+
+            for (int i = 0; i < motionTimingDataArray.Length; i++)
+            {
+                BattleMasterdatas.MotionTimingData motionTimingData = new()
+                {
+                    MonsNo = motionTimingDataArray[i].MonsNo,
+                    FormNo = motionTimingDataArray[i].FormNo,
+                    Sex = motionTimingDataArray[i].Sex,
+                    Buturi01 = motionTimingDataArray[i].Buturi01,
+                    Buturi02 = motionTimingDataArray[i].Buturi02,
+                    Buturi03 = motionTimingDataArray[i].Buturi03,
+                    Tokusyu01 = motionTimingDataArray[i].Tokusyu01,
+                    Tokusyu02 = motionTimingDataArray[i].Tokusyu02,
+                    Tokusyu03 = motionTimingDataArray[i].Tokusyu03,
+                    BodyBlow = motionTimingDataArray[i].BodyBlow,
+                    Punch = motionTimingDataArray[i].Punch,
+                    Kick = motionTimingDataArray[i].Kick,
+                    Tail = motionTimingDataArray[i].Tail,
+                    Bite = motionTimingDataArray[i].Bite,
+                    Peck = motionTimingDataArray[i].Peck,
+                    Radial = motionTimingDataArray[i].Radial,
+                    Cry = motionTimingDataArray[i].Cry,
+                    Dust = motionTimingDataArray[i].Dust,
+                    Shot = motionTimingDataArray[i].Shot,
+                    Guard = motionTimingDataArray[i].Guard,
+                    LandingFall = motionTimingDataArray[i].LandingFall,
+                    LandingFallEase = motionTimingDataArray[i].LandingFallEase
+                };
 
                 gameData.motionTimingData.Add(motionTimingData);
             }
@@ -1658,6 +2843,81 @@ namespace ImpostersOrdeal
         }
 
         /// <summary>
+        ///  Overwrites GlobalData with parsed yaml Moves.
+        /// </summary>
+        private static async Task ParseMovesYAML()
+        {
+            gameData.moves = new();
+            var monoBehaviour = (await yamlCollection[PathEnum.PersonalMasterdatas]).Find(y => y.MonoBehaviour?.Name == "WazaTable").MonoBehaviour as WazaTable;
+            var animationData = (await yamlCollection[PathEnum.BattleMasterdatas]).Find(y => y.MonoBehaviour?.Name == "BattleDataTable").MonoBehaviour as BattleDataTable;
+
+            var moveFields = monoBehaviour.Waza;
+            var animationFields = animationData.BattleWazaData;
+            var textFields = await FindLabelArrayOfYAMLMessageFileAsync("ss_wazaname", Language.English);
+
+            if (animationFields.Length < moveFields.Length)
+                MainForm.ShowParserError("Oh my, this BattleDataTable is missing some stuff...\n" +
+                    "I don't feel so good...\n" +
+                    "WazaTable entries: " + moveFields.Length + "\n" +
+                    "BattleDataTable entries: " + animationFields.Length + "??");
+
+            for (int moveID = 0; moveID < moveFields.Length; moveID++)
+            {
+                Move move = new()
+                {
+                    moveID = moveFields[moveID].WazaNo,
+                    isValid = moveFields[moveID].IsValid,
+                    typingID = moveFields[moveID].Type,
+                    category = moveFields[moveID].Category,
+                    damageCategoryID = moveFields[moveID].DamageType,
+                    power = moveFields[moveID].Power,
+                    hitPer = moveFields[moveID].HitPer,
+                    basePP = moveFields[moveID].BasePP,
+                    priority = moveFields[moveID].Priority,
+                    hitCountMax = moveFields[moveID].HitCountMax,
+                    hitCountMin = moveFields[moveID].HitCountMin,
+                    sickID = moveFields[moveID].SickID,
+                    sickPer = moveFields[moveID].SickPer,
+                    sickCont = moveFields[moveID].SickCont,
+                    sickTurnMin = moveFields[moveID].SickTurnMin,
+                    sickTurnMax = moveFields[moveID].SickTurnMax,
+                    criticalRank = moveFields[moveID].CriticalRank,
+                    shrinkPer = moveFields[moveID].ShrinkPer,
+                    aiSeqNo = moveFields[moveID].AISeqNo,
+                    damageRecoverRatio = moveFields[moveID].DamageRecoverRatio,
+                    hpRecoverRatio = moveFields[moveID].HPRecoverRatio,
+                    target = moveFields[moveID].Target,
+                    rankEffType1 = moveFields[moveID].RankEffType1,
+                    rankEffType2 = moveFields[moveID].RankEffType2,
+                    rankEffType3 = moveFields[moveID].RankEffType3,
+                    rankEffValue1 = moveFields[moveID].RankEffValue1,
+                    rankEffValue2 = moveFields[moveID].RankEffValue2,
+                    rankEffValue3 = moveFields[moveID].RankEffValue3,
+                    rankEffPer1 = moveFields[moveID].RankEffPer1,
+                    rankEffPer2 = moveFields[moveID].RankEffPer2,
+                    rankEffPer3 = moveFields[moveID].RankEffPer3,
+                    flags = moveFields[moveID].Flags,
+                    contestWazaNo = moveFields[moveID].ContestWazaNo,
+
+                    cmdSeqName = animationFields[moveID].CmdSeqName,
+                    cmdSeqNameLegend = animationFields[moveID].CmdSeqNameLegend,
+                    notShortenTurnType0 = animationFields[moveID].NotShortenTurnType0,
+                    notShortenTurnType1 = animationFields[moveID].NotShortenTurnType1,
+                    turnType1 = animationFields[moveID].TurnType1,
+                    turnType2 = animationFields[moveID].TurnType2,
+                    turnType3 = animationFields[moveID].TurnType3,
+                    turnType4 = animationFields[moveID].TurnType4,
+                };
+
+                move.name = "";
+                if (textFields[moveID].WordDataArray.Length > 0)
+                    move.name = textFields[moveID].WordDataArray[0].Str;
+
+                gameData.moves.Add(move);
+            }
+        }
+
+        /// <summary>
         ///  Overwrites GlobalData with parsed ShopTables.
         /// </summary>
         private static async Task ParseShopTables()
@@ -1711,6 +2971,55 @@ namespace ImpostersOrdeal
         }
 
         /// <summary>
+        ///  Overwrites GlobalData with parsed ysml ShopTables.
+        /// </summary>
+        private static async Task ParseShopTablesYAML()
+        {
+            gameData.shopTables = new();
+            var monoBehaviour = (await yamlCollection[PathEnum.DprMasterdatas]).Find(y => y.MonoBehaviour?.Name == "ShopTable").MonoBehaviour as ShopTable;
+
+            gameData.shopTables.martItems = new();
+            var martItemFields = monoBehaviour.FS;
+            for (int martItemIdx = 0; martItemIdx < martItemFields.Length; martItemIdx++)
+            {
+                MartItem martItem = new()
+                {
+                    itemID = martItemFields[martItemIdx].ItemNo,
+                    badgeNum = martItemFields[martItemIdx].BadgeNum,
+                    zoneID = martItemFields[martItemIdx].ZoneID
+                };
+
+                gameData.shopTables.martItems.Add(martItem);
+            }
+
+            gameData.shopTables.fixedShopItems = new();
+            var fixedShopItemFields = monoBehaviour.FixedShop;
+            for (int fixedShopItemIdx = 0; fixedShopItemIdx < fixedShopItemFields.Length; fixedShopItemIdx++)
+            {
+                FixedShopItem fixedShopItem = new()
+                {
+                    itemID = fixedShopItemFields[fixedShopItemIdx].ItemNo,
+                    shopID = fixedShopItemFields[fixedShopItemIdx].ShopID
+                };
+
+                gameData.shopTables.fixedShopItems.Add(fixedShopItem);
+            }
+
+            gameData.shopTables.bpShopItems = new();
+            var bpShopItemFields = monoBehaviour.BPShop;
+            for (int bpShopItemIdx = 0; bpShopItemIdx < bpShopItemFields.Length; bpShopItemIdx++)
+            {
+                BpShopItem bpShopItem = new()
+                {
+                    itemID = bpShopItemFields[bpShopItemIdx].ItemNo,
+                    npcID = bpShopItemFields[bpShopItemIdx].NPCID
+                };
+
+                gameData.shopTables.bpShopItems.Add(bpShopItem);
+            }
+        }
+
+        /// <summary>
         ///  Overwrites GlobalData with parsed PickupItems.
         /// </summary>
         private static async Task ParsePickupItems()
@@ -1728,6 +3037,31 @@ namespace ImpostersOrdeal
                 pickupItem.ratios = new();
                 for (int ratio = 0; ratio < pickupItemFields[pickupItemIdx].children[1].children[0].childrenCount; ratio++)
                     pickupItem.ratios.Add(pickupItemFields[pickupItemIdx].children[1].children[0].children[ratio].value.value.asUInt8);
+
+                gameData.pickupItems.Add(pickupItem);
+            }
+        }
+
+        /// <summary>
+        ///  Overwrites GlobalData with parsed yaml PickupItems.
+        /// </summary>
+        private static async Task ParsePickupItemsYAML()
+        {
+            gameData.pickupItems = new();
+            var monoBehaviour = (await yamlCollection[PathEnum.DprMasterdatas]).Find(y => y.MonoBehaviour?.Name == "MonohiroiTable").MonoBehaviour as MonohiroiTable;
+
+            var pickupItemFields = monoBehaviour.MonoHiroi;
+            for (int pickupItemIdx = 0; pickupItemIdx < pickupItemFields.Length; pickupItemIdx++)
+            {
+                PickupItem pickupItem = new()
+                {
+                    itemID = pickupItemFields[pickupItemIdx].ID
+                };
+
+                //Parse item probabilities
+                pickupItem.ratios = new();
+                for (int ratio = 0; ratio < pickupItemFields[pickupItemIdx].Ratios.Length; ratio++)
+                    pickupItem.ratios.Add(pickupItemFields[pickupItemIdx].Ratios[ratio]);
 
                 gameData.pickupItems.Add(pickupItem);
             }
@@ -1797,6 +3131,71 @@ namespace ImpostersOrdeal
         }
 
         /// <summary>
+        ///  Overwrites GlobalData with parsed yaml Items.
+        /// </summary>
+        private static async Task ParseItemsYAML()
+        {
+            gameData.items = new();
+            var monoBehaviour = (await yamlCollection[PathEnum.PersonalMasterdatas]).Find(y => y.MonoBehaviour?.Name == "ItemTable").MonoBehaviour as ItemTable;
+
+            var itemFields = monoBehaviour.Item;
+            var textFields = await FindLabelArrayOfYAMLMessageFileAsync("ss_itemname", Language.English);
+
+            if (textFields.Length < itemFields.Length)
+                MainForm.ShowParserError("Oh my, this " + FormatMessageFileNameForLanguage("ss_itemname", Language.English) + " is missing some stuff...\n" +
+                    "I don't feel so good...\n" +
+                    "ItemTable entries: " + itemFields.Length + "\n" +
+                    FormatMessageFileNameForLanguage("ss_itemname", Language.English) + " entries: " + textFields.Length + "??");
+
+            for (int itemIdx = 0; itemIdx < itemFields.Length; itemIdx++)
+            {
+                Item item = new()
+                {
+                    itemID = itemFields[itemIdx].No,
+                    type = itemFields[itemIdx].Type,
+                    iconID = itemFields[itemIdx].IconID,
+                    price = itemFields[itemIdx].Price,
+                    bpPrice = itemFields[itemIdx].BPPrice,
+                    nageAtc = itemFields[itemIdx].NageAtc,
+                    sizenAtc = itemFields[itemIdx].SizenAtc,
+                    sizenType = itemFields[itemIdx].SizenType,
+                    tuibamuEff = itemFields[itemIdx].TuibamuEff,
+                    sort = itemFields[itemIdx].Sort,
+                    group = itemFields[itemIdx].Group,
+                    groupID = itemFields[itemIdx].GroupID,
+                    fldPocket = itemFields[itemIdx].FldPocket,
+                    fieldFunc = itemFields[itemIdx].FieldFunc,
+                    battleFunc = itemFields[itemIdx].BattleFunc,
+                    criticalRanks = itemFields[itemIdx].WkCriticalUp,
+                    atkStages = itemFields[itemIdx].WkAtcUp,
+                    defStages = itemFields[itemIdx].WkDefUp,
+                    spdStages = itemFields[itemIdx].WkAgiUp,
+                    accStages = itemFields[itemIdx].WkHitUp,
+                    spAtkStages = itemFields[itemIdx].WkSpaUp,
+                    spDefStages = itemFields[itemIdx].WkSpdUp,
+                    ppRestoreAmount = itemFields[itemIdx].WkPrmPPRcv,
+                    hpEvIncrease = itemFields[itemIdx].WkPrmHPExp,
+                    atkEvIncrease = itemFields[itemIdx].WkPrmPowExp,
+                    defEvIncrease = itemFields[itemIdx].WkPrmDefExp,
+                    spdEvIncrease = itemFields[itemIdx].WkPrmAgiExp,
+                    spAtkEvIncrease = itemFields[itemIdx].WkPrmSpaExp,
+                    spDefEvIncrease = itemFields[itemIdx].WkPrmSpdExp,
+                    friendshipIncrease1 = itemFields[itemIdx].WkFriend1,
+                    friendshipIncrease2 = itemFields[itemIdx].WkFriend2,
+                    friendshipIncrease3 = itemFields[itemIdx].WkFriend3,
+                    hpRestoreAmount = itemFields[itemIdx].WkPrmHPRcv,
+                    flags0 = itemFields[itemIdx].Flags0,
+                };
+
+                item.name = "";
+                if (textFields[itemIdx].WordDataArray.Length > 0)
+                    item.name = textFields[itemIdx].WordDataArray[0].Str;
+
+                gameData.items.Add(item);
+            }
+        }
+
+        /// <summary>
         ///  Overwrites GlobalData with parsed growth rates.
         /// </summary>
         private static async Task ParseGrowthRates()
@@ -1814,6 +3213,30 @@ namespace ImpostersOrdeal
                 growthRate.expRequirements = new();
                 for (int level = 0; level < growthRateFields[growthRateIdx].children[0].children[0].childrenCount; level++)
                     growthRate.expRequirements.Add(growthRateFields[growthRateIdx].children[0].children[0].children[level].value.value.asUInt32);
+
+                gameData.growthRates.Add(growthRate);
+            }
+        }
+
+        /// <summary>
+        ///  Overwrites GlobalData with parsed yaml growth rates.
+        /// </summary>
+        private static async Task ParseGrowthRatesYAML()
+        {
+            gameData.growthRates = new();
+            var monoBehaviour = (await yamlCollection[PathEnum.PersonalMasterdatas]).Find(y => y.MonoBehaviour?.Name == "GrowTable").MonoBehaviour as GrowTable;
+
+            var growthRateFields = monoBehaviour.Data;
+            for (int growthRateIdx = 0; growthRateIdx < growthRateFields.Length; growthRateIdx++)
+            {
+                GrowthRate growthRate = new()
+                {
+                    growthID = growthRateIdx
+                };
+
+                growthRate.expRequirements = new();
+                for (int level = 0; level < growthRateFields[growthRateIdx].Exps.Length; level++)
+                    growthRate.expRequirements.Add(growthRateFields[growthRateIdx].Exps[level]);
 
                 gameData.growthRates.Add(growthRate);
             }
@@ -1865,7 +3288,7 @@ namespace ImpostersOrdeal
                 AssetTypeValueField[] labelDataFields = monoBehaviours[mIdx].children[8].children[0].children;
                 for (int labelDataIdx = 0; labelDataIdx < labelDataFields.Length; labelDataIdx++)
                 {
-                    LabelData labelData = new();
+                    GameDataTypes.LabelData labelData = new();
                     labelData.labelIndex = labelDataFields[labelDataIdx].children[0].value.value.asInt32;
                     labelData.arrayIndex = labelDataFields[labelDataIdx].children[1].value.value.asInt32;
                     labelData.labelName = Encoding.Default.GetString(labelDataFields[labelDataIdx].children[2].value.value.asString);
@@ -1888,7 +3311,7 @@ namespace ImpostersOrdeal
                     labelData.tagDatas = new();
                     for (int tagDataIdx = 0; tagDataIdx < tagDataFields.Length; tagDataIdx++)
                     {
-                        TagData tagData = new();
+                        GameDataTypes.TagData tagData = new();
                         tagData.tagIndex = tagDataFields[tagDataIdx].children[0].value.value.asInt32;
                         tagData.groupID = tagDataFields[tagDataIdx].children[1].value.value.asInt32;
                         tagData.tagID = tagDataFields[tagDataIdx].children[2].value.value.asInt32;
@@ -1911,13 +3334,162 @@ namespace ImpostersOrdeal
                     AssetTypeValueField[] wordDataFields = labelDataFields[labelDataIdx].children[6].children[0].children;
                     for (int wordDataIdx = 0; wordDataIdx < wordDataFields.Length; wordDataIdx++)
                     {
-                        WordData wordData = new();
+                        GameDataTypes.WordData wordData = new();
                         wordData.patternID = wordDataFields[wordDataIdx].children[0].value.value.asInt32;
                         wordData.eventID = wordDataFields[wordDataIdx].children[1].value.value.asInt32;
                         wordData.tagIndex = wordDataFields[wordDataIdx].children[2].value.value.asInt32;
                         wordData.tagValue = wordDataFields[wordDataIdx].children[3].value.value.asFloat;
                         wordData.str = Encoding.UTF8.GetString(wordDataFields[wordDataIdx].children[4].value.value.asString);
                         wordData.strWidth = wordDataFields[wordDataIdx].children[5].value.value.asFloat;
+
+                        labelData.wordDatas.Add(wordData);
+                    }
+
+                    messageFile.labelDatas.Add(labelData);
+                }
+
+                switch (messageFile.langID)
+                {
+                    case Language.Japanese:
+                        if (messageFile.isKanji == 0)
+                            gameData.messageFileSets[0].messageFiles.Add(messageFile);
+                        else
+                            gameData.messageFileSets[1].messageFiles.Add(messageFile);
+                        break;
+                    case Language.English:
+                        gameData.messageFileSets[2].messageFiles.Add(messageFile);
+                        break;
+                    case Language.French:
+                        gameData.messageFileSets[3].messageFiles.Add(messageFile);
+                        break;
+                    case Language.Italian:
+                        gameData.messageFileSets[4].messageFiles.Add(messageFile);
+                        break;
+                    case Language.German:
+                        gameData.messageFileSets[5].messageFiles.Add(messageFile);
+                        break;
+                    case Language.Spanish:
+                        gameData.messageFileSets[6].messageFiles.Add(messageFile);
+                        break;
+                    case Language.Korean:
+                        gameData.messageFileSets[7].messageFiles.Add(messageFile);
+                        break;
+                    case Language.SimpChinese:
+                        gameData.messageFileSets[8].messageFiles.Add(messageFile);
+                        break;
+                    case Language.TradChinese:
+                        gameData.messageFileSets[9].messageFiles.Add(messageFile);
+                        break;
+                }
+            }
+        }
+
+        /// <summary>
+        ///  Overwrites GlobalData with parsed yaml MessageFiles.
+        /// </summary>
+        public static async Task ParseAllMessageFilesYAML()
+        {
+            gameData.messageFileSets = new MessageFileSet[10];
+            for (int i = 0; i < gameData.messageFileSets.Length; i++)
+            {
+                gameData.messageFileSets[i] = new();
+                gameData.messageFileSets[i].messageFiles = new();
+            }
+            gameData.messageFileSets[0].langID = Language.Japanese;
+            gameData.messageFileSets[1].langID = Language.Japanese;
+            gameData.messageFileSets[2].langID = Language.English;
+            gameData.messageFileSets[3].langID = Language.French;
+            gameData.messageFileSets[4].langID = Language.Italian;
+            gameData.messageFileSets[5].langID = Language.German;
+            gameData.messageFileSets[6].langID = Language.Spanish;
+            gameData.messageFileSets[7].langID = Language.Korean;
+            gameData.messageFileSets[8].langID = Language.SimpChinese;
+            gameData.messageFileSets[9].langID = Language.TradChinese;
+
+            List<YamlMonoContainer> monoBehaviours = await yamlCollection[PathEnum.CommonMsbt];
+            monoBehaviours.AddRange(await yamlCollection[PathEnum.English]);
+            monoBehaviours.AddRange(await yamlCollection[PathEnum.French]);
+            monoBehaviours.AddRange(await yamlCollection[PathEnum.German]);
+            monoBehaviours.AddRange(await yamlCollection[PathEnum.Italian]);
+            monoBehaviours.AddRange(await yamlCollection[PathEnum.Jpn]);
+            monoBehaviours.AddRange(await yamlCollection[PathEnum.JpnKanji]);
+            monoBehaviours.AddRange(await yamlCollection[PathEnum.Korean]);
+            monoBehaviours.AddRange(await yamlCollection[PathEnum.SimpChinese]);
+            monoBehaviours.AddRange(await yamlCollection[PathEnum.Spanish]);
+            monoBehaviours.AddRange(await yamlCollection[PathEnum.TradChinese]);
+
+            for (int mIdx = 0; mIdx < monoBehaviours.Count; mIdx++)
+            {
+                var mono = monoBehaviours[mIdx].MonoBehaviour as MsbtData;
+
+                MessageFile messageFile = new()
+                {
+                    mName = mono.Name,
+                    langID = (Language)mono.LangID,
+                    isKanji = mono.IsKanji,
+                };
+
+                //Parse LabelData
+                LabelData[] yamlLabelData = mono.LabelDataArray;
+                messageFile.labelDatas = new();
+                for (int labelDataIdx = 0; labelDataIdx < yamlLabelData.Length; labelDataIdx++)
+                {
+                    GameDataTypes.LabelData labelData = new()
+                    {
+                        labelIndex = yamlLabelData[labelDataIdx].LabelIndex,
+                        arrayIndex = yamlLabelData[labelDataIdx].ArrayIndex,
+                        labelName = yamlLabelData[labelDataIdx].LabelName,
+                        styleIndex = yamlLabelData[labelDataIdx].StyleInfo.StyleIndex,
+                        colorIndex = yamlLabelData[labelDataIdx].StyleInfo.ColorIndex,
+                        fontSize = yamlLabelData[labelDataIdx].StyleInfo.FontSize,
+                        maxWidth = yamlLabelData[labelDataIdx].StyleInfo.MaxWidth,
+                        controlID = yamlLabelData[labelDataIdx].StyleInfo.ControlID,
+                    };
+
+                    // Parse Attribute Array
+                    int[] yamlAttrArray = yamlLabelData[labelDataIdx].AttributeValueArray;
+                    labelData.attributeValues = new();
+                    for (int attrIdx = 0; attrIdx < yamlAttrArray.Length; attrIdx++)
+                        labelData.attributeValues.Add(yamlAttrArray[attrIdx]);
+
+                    // Parse TagData
+                    TagData[] yamlTagData = yamlLabelData[labelDataIdx].TagDataArray;
+                    labelData.tagDatas = new();
+                    for (int tagDataIdx = 0; tagDataIdx < yamlTagData.Length; tagDataIdx++)
+                    {
+                        GameDataTypes.TagData tagData = new()
+                        {
+                            tagIndex = yamlTagData[tagDataIdx].TagIndex,
+                            groupID = yamlTagData[tagDataIdx].GroupID,
+                            tagID = yamlTagData[tagDataIdx].TagID,
+                            tagPatternID = yamlTagData[tagDataIdx].TagPatternID,
+                            forceArticle = yamlTagData[tagDataIdx].ForceArticle,
+                            tagParameter = yamlTagData[tagDataIdx].TagParameter,
+                        };
+                        
+                        tagData.tagWordArray = new();
+                        foreach (string tagWord in yamlTagData[tagDataIdx].TagWordArray)
+                            tagData.tagWordArray.Add(tagWord);
+
+                        tagData.forceGrmID = yamlTagData[tagDataIdx].ForceGrmID;
+
+                        labelData.tagDatas.Add(tagData);
+                    }
+
+                    //Parse WordData
+                    WordData[] yamlWordData = yamlLabelData[labelDataIdx].WordDataArray;
+                    labelData.wordDatas = new();
+                    for (int wordDataIdx = 0; wordDataIdx < yamlWordData.Length; wordDataIdx++)
+                    {
+                        GameDataTypes.WordData wordData = new()
+                        {
+                            patternID = yamlWordData[wordDataIdx].PatternID,
+                            eventID = yamlWordData[wordDataIdx].EventID,
+                            tagIndex = yamlWordData[wordDataIdx].TagIndex,
+                            tagValue = yamlWordData[wordDataIdx].TagValue,
+                            str = yamlWordData[wordDataIdx].Str,
+                            strWidth = yamlWordData[wordDataIdx].StrWidth
+                        };
 
                         labelData.wordDatas.Add(wordData);
                     }
@@ -1979,7 +3551,7 @@ namespace ImpostersOrdeal
                 AssetTypeValueField[] scriptFields = monoBehaviours[mIdx].children[4].children[0].children;
                 for (int scriptIdx = 0; scriptIdx < scriptFields.Length; scriptIdx++)
                 {
-                    Script script = new();
+                    GameDataTypes.Script script = new();
                     script.evLabel = Encoding.Default.GetString(scriptFields[scriptIdx].children[0].value.value.asString);
 
                     //Parse Commands
@@ -1987,7 +3559,7 @@ namespace ImpostersOrdeal
                     AssetTypeValueField[] commandFields = scriptFields[scriptIdx].children[1].children[0].children;
                     for (int commandIdx = 0; commandIdx < commandFields.Length; commandIdx++)
                     {
-                        Command command = new();
+                        GameDataTypes.Command command = new();
 
                         //Check for commands without data, because those exist for some reason.
                         if (commandFields[commandIdx].children[0].children[0].children.Length == 0)
@@ -2023,6 +3595,73 @@ namespace ImpostersOrdeal
                 AssetTypeValueField[] stringFields = monoBehaviours[mIdx].children[5].children[0].children;
                 for (int stringIdx = 0; stringIdx < stringFields.Length; stringIdx++)
                     evScript.strList.Add(Encoding.Default.GetString(stringFields[stringIdx].value.value.asString));
+
+                gameData.evScripts.Add(evScript);
+            }
+        }
+
+        /// <summary>
+        ///  Overwrites GlobalData with parsed yaml EvScripts.
+        /// </summary>
+        private static async Task ParseEvScriptsYAML()
+        {
+            gameData.evScripts = new();
+            var monoBehaviours = (await yamlCollection[PathEnum.EvScript]).Select(y => y.MonoBehaviour).OfType<EvData>().ToList();
+
+            for (int mIdx = 0; mIdx < monoBehaviours.Count; mIdx++)
+            {
+                EvScript evScript = new();
+                evScript.mName = monoBehaviours[mIdx].Name;
+
+                //Parse Scripts
+                evScript.scripts = new();
+                var scriptFields = monoBehaviours[mIdx].Scripts;
+                for (int scriptIdx = 0; scriptIdx < scriptFields.Count; scriptIdx++)
+                {
+                    GameDataTypes.Script script = new();
+                    script.evLabel = scriptFields[scriptIdx].Label;
+
+                    //Parse Commands
+                    script.commands = new();
+                    var commandFields = scriptFields[scriptIdx].Commands;
+                    for (int commandIdx = 0; commandIdx < commandFields.Count; commandIdx++)
+                    {
+                        GameDataTypes.Command command = new();
+
+                        //Check for commands without data, because those exist for some reason.
+                        if (commandFields[commandIdx].Arg.Count == 0)
+                        {
+                            command.cmdType = -1;
+                            script.commands.Add(command);
+                            continue;
+                        }
+                        command.cmdType = commandFields[commandIdx].Arg[0].Data;
+
+                        //Parse Arguments
+                        command.args = new();
+                        var argumentFields = commandFields[commandIdx].Arg;
+                        for (int argIdx = 1; argIdx < argumentFields.Count; argIdx++)
+                        {
+                            Argument arg = new();
+                            arg.argType = argumentFields[argIdx].ArgType;
+                            arg.data = argumentFields[argIdx].Data;
+                            if (arg.argType == 1)
+                                arg.data = ConvertToFloat((int)arg.data);
+
+                            command.args.Add(arg);
+                        }
+
+                        script.commands.Add(command);
+                    }
+
+                    evScript.scripts.Add(script);
+                }
+
+                //Parse StrLists
+                evScript.strList = new();
+                var stringFields = monoBehaviours[mIdx].StrList;
+                for (int stringIdx = 0; stringIdx < stringFields.Count; stringIdx++)
+                    evScript.strList.Add(stringFields[stringIdx]);
 
                 gameData.evScripts.Add(evScript);
             }
@@ -2249,9 +3888,9 @@ namespace ImpostersOrdeal
         /// </summary>
         public static void CommitChangesToYAML()
         {
-            /*if (gameData.IsModified(GameDataSet.DataField.EvScripts))
+            if (gameData.IsModified(GameDataSet.DataField.EvScripts))
                 CommitEvScriptsYAML();
-            if (gameData.IsModified(GameDataSet.DataField.PickupItems))
+            /*if (gameData.IsModified(GameDataSet.DataField.PickupItems))
                 CommitPickupItemsYAML();
             if (gameData.IsModified(GameDataSet.DataField.ShopTables))
                 CommitShopTablesYAML();
@@ -3141,7 +4780,7 @@ distributionTable
             AssetTypeTemplateField intATTF = ugPokemonDataFields[0]["reactioncode"][0][0].GetTemplateField();
 
             List<AssetTypeValueField> newUgPokemonData = new();
-            foreach (UgPokemonData ugPokemonData in gameData.ugPokemonData)
+            foreach (var ugPokemonData in gameData.ugPokemonData)
             {
                 AssetTypeValueField baseField = ValueBuilder.DefaultValueFieldFromTemplate(ugPokemonDataTemplate);
 
@@ -3279,7 +4918,7 @@ distributionTable
                 }
 
                 List<AssetTypeValueField> newLabelDataArray = new();
-                foreach (LabelData labelData in messageFile.labelDatas)
+                foreach (GameDataTypes.LabelData labelData in messageFile.labelDatas)
                 {
                     AssetTypeValueField baseField = ValueBuilder.DefaultValueFieldFromTemplate(labelDataRef.GetTemplateField());
                     baseField["labelIndex"].GetValue().Set(labelData.labelIndex);
@@ -3301,7 +4940,7 @@ distributionTable
                     baseField["attributeValueArray"][0].SetChildrenList(attributeValueArray.ToArray());
 
                     List<AssetTypeValueField> tagDataArray = new();
-                    foreach (TagData tagData in labelData.tagDatas)
+                    foreach (GameDataTypes.TagData tagData in labelData.tagDatas)
                     {
                         AssetTypeValueField tagDataField = ValueBuilder.DefaultValueFieldFromTemplate(tagDataTemplate);
                         tagDataField["tagIndex"].GetValue().Set(tagData.tagIndex);
@@ -3325,7 +4964,7 @@ distributionTable
                     baseField["tagDataArray"][0].SetChildrenList(tagDataArray.ToArray());
 
                     List<AssetTypeValueField> wordDataArray = new();
-                    foreach (WordData wordData in labelData.wordDatas)
+                    foreach (GameDataTypes.WordData wordData in labelData.wordDatas)
                     {
                         AssetTypeValueField wordDataField = ValueBuilder.DefaultValueFieldFromTemplate(wordDataTemplate);
                         wordDataField["patternID"].GetValue().Set(wordData.patternID);
@@ -3440,6 +5079,115 @@ distributionTable
 
             fileManager.WriteMonoBehaviours(PathEnum.Gamesettings, encounterTableMonoBehaviours);
             return;
+        }
+
+        /// <summary>
+        ///  Updates loaded yaml with EncounterTables.
+        /// </summary>
+        private static void CommitEncounterTablesYAML()
+        {
+            List<YamlMonoContainer> monoBehaviours = fileManager.GetYAMLs(PathEnum.Gamesettings);
+            FieldEncountTable[] encounterTableMonoBehaviours = new FieldEncountTable[2]
+            {
+                monoBehaviours.Find(m => m.MonoBehaviour.Name == "FieldEncountTable_d").MonoBehaviour as FieldEncountTable,
+                monoBehaviours.Find(m => m.MonoBehaviour.Name == "FieldEncountTable_p").MonoBehaviour as FieldEncountTable,
+            };
+
+            for (int encounterTableFileIdx = 0; encounterTableFileIdx < encounterTableMonoBehaviours.Length; encounterTableFileIdx++)
+            {
+                EncounterTableFile encounterTableFile = gameData.encounterTableFiles[encounterTableFileIdx];
+                encounterTableMonoBehaviours[encounterTableFileIdx].Name = encounterTableFile.mName;
+
+                //Write wild encounter tables
+                var table = encounterTableMonoBehaviours[encounterTableFileIdx].Table;
+                for (int encounterTableIdx = 0; encounterTableIdx < table.Length; encounterTableIdx++)
+                {
+                    EncounterTable encounterTable = encounterTableFile.encounterTables[encounterTableIdx];
+                    table[encounterTableIdx].ZoneID = (int)encounterTable.zoneID;
+                    table[encounterTableIdx].EncRateGr = encounterTable.encRateGround;
+                    table[encounterTableIdx].FormProb[0] = encounterTable.formProb;
+                    table[encounterTableIdx].AnnoonTable[1] = encounterTable.unownTable;
+                    table[encounterTableIdx].EncRateWat = encounterTable.encRateWater;
+                    table[encounterTableIdx].EncRateTuriBoro = encounterTable.encRateOldRod;
+                    table[encounterTableIdx].EncRateTuriIi = encounterTable.encRateGoodRod;
+                    table[encounterTableIdx].EncRateSugoi = encounterTable.encRateSuperRod;
+
+                    //Write ground tables
+                    table[encounterTableIdx].GroundMons = ConvertEncountersToMonsLv(encounterTable.groundMons);
+
+                    //Write morning tables
+                    table[encounterTableIdx].Tairyo = ConvertEncountersToMonsLv(encounterTable.tairyo);
+
+                    //Write day tables
+                    table[encounterTableIdx].Day = ConvertEncountersToMonsLv(encounterTable.day);
+
+                    //Write night tables
+                    table[encounterTableIdx].Night = ConvertEncountersToMonsLv(encounterTable.night);
+
+                    //Write pokefinder tables
+                    table[encounterTableIdx].SwayGrass = ConvertEncountersToMonsLv(encounterTable.swayGrass);
+
+                    //Write ruby tables
+                    table[encounterTableIdx].GBARuby = ConvertEncountersToMonsLv(encounterTable.gbaRuby);
+
+                    //Write sapphire tables
+                    table[encounterTableIdx].GBASapp = ConvertEncountersToMonsLv(encounterTable.gbaSapphire);
+
+                    //Write emerald tables
+                    table[encounterTableIdx].GBAEme = ConvertEncountersToMonsLv(encounterTable.gbaEmerald);
+
+                    //Write fire tables
+                    table[encounterTableIdx].GBAFire = ConvertEncountersToMonsLv(encounterTable.gbaFire);
+
+                    //Write leaf tables
+                    table[encounterTableIdx].GBALeaf = ConvertEncountersToMonsLv(encounterTable.gbaLeaf);
+
+                    //Write surfing tables
+                    table[encounterTableIdx].WaterMons = ConvertEncountersToMonsLv(encounterTable.waterMons);
+
+                    //Write old rod tables
+                    table[encounterTableIdx].BoroMons = ConvertEncountersToMonsLv(encounterTable.oldRodMons);
+
+                    //Write good rod tables
+                    table[encounterTableIdx].IiMons = ConvertEncountersToMonsLv(encounterTable.goodRodMons);
+
+                    //Write super rod tables
+                    table[encounterTableIdx].SugoiMons = ConvertEncountersToMonsLv(encounterTable.superRodMons);
+                }
+
+                //Write trophy garden table
+                encounterTableMonoBehaviours[encounterTableFileIdx].Urayama = new Sheeturayama[encounterTableFile.trophyGardenMons.Count];
+                for (int trophyGardenMonIdx = 0; trophyGardenMonIdx < encounterTableMonoBehaviours[encounterTableFileIdx].Urayama.Length; trophyGardenMonIdx++)
+                {
+                    encounterTableMonoBehaviours[encounterTableFileIdx].Urayama[trophyGardenMonIdx] = new()
+                    {
+                        MonsNo = encounterTableFile.trophyGardenMons[trophyGardenMonIdx]
+                    };
+                }
+
+                //Write honey tree tables (not actually honey trees?)
+                encounterTableMonoBehaviours[encounterTableFileIdx].Mistu = new Sheetmistu[encounterTableFile.honeyTreeEnconters.Count];
+                for (int honeyTreeEncounterIdx = 0; honeyTreeEncounterIdx < encounterTableMonoBehaviours[encounterTableFileIdx].HoneyTree.Length; honeyTreeEncounterIdx++)
+                {
+                    encounterTableMonoBehaviours[encounterTableFileIdx].Mistu[honeyTreeEncounterIdx] = new()
+                    {
+                        Rate = encounterTableFile.honeyTreeEnconters[honeyTreeEncounterIdx].rate,
+                        Normal = encounterTableFile.honeyTreeEnconters[honeyTreeEncounterIdx].normalDexID,
+                        Rare = encounterTableFile.honeyTreeEnconters[honeyTreeEncounterIdx].rareDexID,
+                        SuperRare = encounterTableFile.honeyTreeEnconters[honeyTreeEncounterIdx].superRareDexID,
+                    };
+                }
+
+                //Write safari table
+                encounterTableMonoBehaviours[encounterTableFileIdx].Safari = new Sheetsafari[encounterTableFile.safariMons.Count];
+                for (int safariMonIdx = 0; safariMonIdx < encounterTableMonoBehaviours[encounterTableFileIdx].Safari.Length; safariMonIdx++)
+                {
+                    encounterTableMonoBehaviours[encounterTableFileIdx].Safari[safariMonIdx] = new()
+                    {
+                        MonsNo = encounterTableFile.safariMons[safariMonIdx]
+                    };
+                }
+            }
         }
 
         /// <summary>
@@ -3677,14 +5425,14 @@ distributionTable
                 AssetTypeValueField[] scriptFields = monoBehaviours[mIdx].children[4].children[0].children;
                 for (int scriptIdx = 0; scriptIdx < scriptFields.Length; scriptIdx++)
                 {
-                    Script script = evScript.scripts[scriptIdx];
+                    var script = evScript.scripts[scriptIdx];
                     scriptFields[scriptIdx].children[0].GetValue().Set(script.evLabel);
 
                     //Write Commands
                     AssetTypeValueField[] commandFields = scriptFields[scriptIdx].children[1].children[0].children;
                     for (int commandIdx = 0; commandIdx < commandFields.Length; commandIdx++)
                     {
-                        Command command = script.commands[commandIdx];
+                        var command = script.commands[commandIdx];
 
                         //Check for commands without data, because those exist for some reason.
                         if (commandFields[commandIdx].children[0].children[0].children.Length == 0)
@@ -3700,7 +5448,7 @@ distributionTable
                             argumentFields[argIdx].children[0].GetValue().Set(arg.argType);
                             argumentFields[argIdx].children[1].GetValue().Set(arg.data);
                             if (arg.argType == 1)
-                                argumentFields[argIdx].children[1].GetValue().Set(ConvertToInt((int)arg.data));
+                                argumentFields[argIdx].children[1].GetValue().Set(ConvertToInt(arg.data));
                         }
                     }
                 }
@@ -3715,111 +5463,58 @@ distributionTable
         }
 
         /// <summary>
-        ///  Updates loaded yaml with EncounterTables.
+        ///  Updates loaded yaml with EvScripts.
         /// </summary>
-        private static void CommitEncounterTablesYAML()
+        private static void CommitEvScriptsYAML()
         {
-            List<YamlMonoContainer> monoBehaviours = fileManager.GetYAMLs(PathEnum.Gamesettings);
-            FieldEncountTable[] encounterTableMonoBehaviours = new FieldEncountTable[2]
+            var monoBehaviours = fileManager.GetYAMLs(PathEnum.EvScript).Select(y => y.MonoBehaviour).OfType<EvData>().ToList();
+
+            for (int mIdx = 0; mIdx < monoBehaviours.Count; mIdx++)
             {
-                monoBehaviours.Find(m => m.MonoBehaviour.Name == "FieldEncountTable_d").MonoBehaviour as FieldEncountTable,
-                monoBehaviours.Find(m => m.MonoBehaviour.Name == "FieldEncountTable_p").MonoBehaviour as FieldEncountTable,
-            };
-            
-            for (int encounterTableFileIdx = 0; encounterTableFileIdx < encounterTableMonoBehaviours.Length; encounterTableFileIdx++)
-            {
-                EncounterTableFile encounterTableFile = gameData.encounterTableFiles[encounterTableFileIdx];
-                encounterTableMonoBehaviours[encounterTableFileIdx].Name = encounterTableFile.mName;
+                EvScript evScript = gameData.evScripts[mIdx];
+                monoBehaviours[mIdx].Name = evScript.mName;
 
-                //Write wild encounter tables
-                var table = encounterTableMonoBehaviours[encounterTableFileIdx].Table;
-                for (int encounterTableIdx = 0; encounterTableIdx < table.Length; encounterTableIdx++)
+                //Write Scripts
+                var scriptFields = monoBehaviours[mIdx].Scripts;
+                for (int scriptIdx = 0; scriptIdx < scriptFields.Count; scriptIdx++)
                 {
-                    EncounterTable encounterTable = encounterTableFile.encounterTables[encounterTableIdx];
-                    table[encounterTableIdx].ZoneID = (int)encounterTable.zoneID;
-                    table[encounterTableIdx].EncRateGr = encounterTable.encRateGround;
-                    table[encounterTableIdx].FormProb[0] = encounterTable.formProb;
-                    table[encounterTableIdx].AnnoonTable[1] = encounterTable.unownTable;
-                    table[encounterTableIdx].EncRateWat = encounterTable.encRateWater;
-                    table[encounterTableIdx].EncRateTuriBoro = encounterTable.encRateOldRod;
-                    table[encounterTableIdx].EncRateTuriIi = encounterTable.encRateGoodRod;
-                    table[encounterTableIdx].EncRateSugoi = encounterTable.encRateSuperRod;
+                    var script = evScript.scripts[scriptIdx];
+                    scriptFields[scriptIdx].Label = script.evLabel;
 
-                    //Write ground tables
-                    table[encounterTableIdx].GroundMons = ConvertEncountersToMonsLv(encounterTable.groundMons);
-
-                    //Write morning tables
-                    table[encounterTableIdx].Tairyo = ConvertEncountersToMonsLv(encounterTable.tairyo);
-
-                    //Write day tables
-                    table[encounterTableIdx].Day = ConvertEncountersToMonsLv(encounterTable.day);
-
-                    //Write night tables
-                    table[encounterTableIdx].Night = ConvertEncountersToMonsLv(encounterTable.night);
-
-                    //Write pokefinder tables
-                    table[encounterTableIdx].SwayGrass = ConvertEncountersToMonsLv(encounterTable.swayGrass);
-
-                    //Write ruby tables
-                    table[encounterTableIdx].GBARuby = ConvertEncountersToMonsLv(encounterTable.gbaRuby);
-
-                    //Write sapphire tables
-                    table[encounterTableIdx].GBASapp = ConvertEncountersToMonsLv(encounterTable.gbaSapphire);
-
-                    //Write emerald tables
-                    table[encounterTableIdx].GBAEme = ConvertEncountersToMonsLv(encounterTable.gbaEmerald);
-
-                    //Write fire tables
-                    table[encounterTableIdx].GBAFire = ConvertEncountersToMonsLv(encounterTable.gbaFire);
-
-                    //Write leaf tables
-                    table[encounterTableIdx].GBALeaf = ConvertEncountersToMonsLv(encounterTable.gbaLeaf);
-
-                    //Write surfing tables
-                    table[encounterTableIdx].WaterMons = ConvertEncountersToMonsLv(encounterTable.waterMons);
-
-                    //Write old rod tables
-                    table[encounterTableIdx].BoroMons = ConvertEncountersToMonsLv(encounterTable.oldRodMons);
-
-                    //Write good rod tables
-                    table[encounterTableIdx].IiMons = ConvertEncountersToMonsLv(encounterTable.goodRodMons);
-
-                    //Write super rod tables
-                    table[encounterTableIdx].SugoiMons = ConvertEncountersToMonsLv(encounterTable.superRodMons);
-                }
-
-                //Write trophy garden table
-                encounterTableMonoBehaviours[encounterTableFileIdx].Urayama = new Sheeturayama[encounterTableFile.trophyGardenMons.Count];
-                for (int trophyGardenMonIdx = 0; trophyGardenMonIdx < encounterTableMonoBehaviours[encounterTableFileIdx].Urayama.Length; trophyGardenMonIdx++)
-                {
-                    encounterTableMonoBehaviours[encounterTableFileIdx].Urayama[trophyGardenMonIdx] = new()
+                    //Write Commands
+                    var commandFields = scriptFields[scriptIdx].Commands;
+                    for (int commandIdx = 0; commandIdx < commandFields.Count; commandIdx++)
                     {
-                        MonsNo = encounterTableFile.trophyGardenMons[trophyGardenMonIdx]
-                    };
+                        var command = script.commands[commandIdx];
+
+                        //Check for commands without data, because those exist for some reason.
+                        if (commandFields[commandIdx].Arg.Count == 0)
+                            continue;
+
+                        commandFields[commandIdx].Arg[0] = new Aregment()
+                        {
+                            ArgType = commandFields[commandIdx].Arg[0].ArgType,
+                            Data = command.cmdType,
+                        };
+
+                        //Write Arguments
+                        var argumentFields = commandFields[commandIdx].Arg;
+                        for (int argIdx = 1; argIdx < argumentFields.Count; argIdx++)
+                        {
+                            Argument arg = command.args[argIdx - 1];
+                            argumentFields[argIdx] = new Aregment()
+                            {
+                                ArgType = arg.argType,
+                                Data = arg.argType == 1 ? ConvertToInt(arg.data) : (int)arg.data,
+                            };
+                        }
+                    }
                 }
 
-                //Write honey tree tables (not actually honey trees?)
-                encounterTableMonoBehaviours[encounterTableFileIdx].Mistu = new Sheetmistu[encounterTableFile.honeyTreeEnconters.Count];
-                for (int honeyTreeEncounterIdx = 0; honeyTreeEncounterIdx < encounterTableMonoBehaviours[encounterTableFileIdx].HoneyTree.Length; honeyTreeEncounterIdx++)
-                {
-                    encounterTableMonoBehaviours[encounterTableFileIdx].Mistu[honeyTreeEncounterIdx] = new()
-                    {
-                        Rate = encounterTableFile.honeyTreeEnconters[honeyTreeEncounterIdx].rate,
-                        Normal = encounterTableFile.honeyTreeEnconters[honeyTreeEncounterIdx].normalDexID,
-                        Rare = encounterTableFile.honeyTreeEnconters[honeyTreeEncounterIdx].rareDexID,
-                        SuperRare = encounterTableFile.honeyTreeEnconters[honeyTreeEncounterIdx].superRareDexID,
-                    };
-                }
-
-                //Write safari table
-                encounterTableMonoBehaviours[encounterTableFileIdx].Safari = new Sheetsafari[encounterTableFile.safariMons.Count];
-                for (int safariMonIdx = 0; safariMonIdx < encounterTableMonoBehaviours[encounterTableFileIdx].Safari.Length; safariMonIdx++)
-                {
-                    encounterTableMonoBehaviours[encounterTableFileIdx].Safari[safariMonIdx] = new()
-                    {
-                        MonsNo = encounterTableFile.safariMons[safariMonIdx]
-                    };
-                }
+                //Write StrLists
+                var stringFields = monoBehaviours[mIdx].StrList;
+                for (int stringIdx = 0; stringIdx < stringFields.Count; stringIdx++)
+                    stringFields[stringIdx] = evScript.strList[stringIdx];
             }
         }
 

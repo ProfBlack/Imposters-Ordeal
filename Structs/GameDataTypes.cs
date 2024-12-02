@@ -1788,7 +1788,7 @@ namespace ImpostersOrdeal
             public bool IsValid();
         }
 
-        public enum Language
+        public enum Language : int
         {
             Japanese = 1,
             English = 2,

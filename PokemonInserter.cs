@@ -350,8 +350,8 @@ namespace ImpostersOrdeal
             if (dstFormNo != 0)
                 return;
 
-            UgPokemonData srcUGPD = gameData.ugPokemonData.Find(u => u.monsno == srcMonsNo);
-            UgPokemonData dstUGPD = (UgPokemonData)srcUGPD.Clone();
+            var srcUGPD = gameData.ugPokemonData.Find(u => u.monsno == srcMonsNo);
+            var dstUGPD = (GameDataTypes.UgPokemonData)srcUGPD.Clone();
             dstUGPD.monsno = dstMonsNo;
             gameData.ugPokemonData.Add(dstUGPD);
         }
@@ -766,18 +766,18 @@ namespace ImpostersOrdeal
                     p.formIndex++;
             }
 
-            IEnumerable<LabelData> lds = gameData.messageFileSets.SelectMany(mfs => mfs.messageFiles.Where
+            var lds = gameData.messageFileSets.SelectMany(mfs => mfs.messageFiles.Where
                 (mf => mf.mName.Contains("ss_zkn_form") || mf.mName.Contains("ss_zkn_height") || mf.mName.Contains("ss_zkn_weight"))
                 .SelectMany(mf => mf.labelDatas));
             if (gameData.FormDescriptionsExist())
             {
-                List<LabelData> lds0 = lds.ToList();
+                var lds0 = lds.ToList();
                 lds0.AddRange(gameData.messageFileSets.SelectMany(mfs => mfs.messageFiles.Where
                     (mf => mf.mName.Contains("dp_pokedex_diamond") || mf.mName.Contains("dp_pokedex_pearl"))
                     .SelectMany(mf => mf.labelDatas)));
                 lds = lds0;
             }
-            foreach (LabelData ld in lds)
+            foreach (var ld in lds)
             {
                 if (ld.labelIndex >= insert.personalID)
                     ld.labelIndex++;
@@ -808,8 +808,8 @@ namespace ImpostersOrdeal
                     {
                         string srcLabelName = "MONSNAME_" + srcMonsNo.ToString("D3");
                         string dstLabelName = "MONSNAME_" + dstMonsNo.ToString("D3");
-                        LabelData srcLabelData = msgFile.labelDatas.Find(mf => mf.labelName == srcLabelName);
-                        LabelData newLabelData = (LabelData)srcLabelData.Clone();
+                        var srcLabelData = msgFile.labelDatas.Find(mf => mf.labelName == srcLabelName);
+                        var newLabelData = (GameDataTypes.LabelData)srcLabelData.Clone();
                         newLabelData.labelName = dstLabelName;
                         newLabelData.labelIndex = dstMonsNo;
                         newLabelData.arrayIndex = newLabelData.labelIndex;
@@ -825,8 +825,8 @@ namespace ImpostersOrdeal
                     {
                         string srcLabelName = formDescriptions ? $"DP_pokedex_diamond_{srcMonsNo:D3}_{srcFormNo:D3}" : $"DP_pokedex_diamond_{srcMonsNo:D3}";
                         string dstLabelName = formDescriptions ? $"DP_pokedex_diamond_{dstMonsNo:D3}_{dstFormNo:D3}" : $"DP_pokedex_diamond_{dstMonsNo:D3}";
-                        LabelData srcLabelData = msgFile.labelDatas.Find(mf => mf.labelName == srcLabelName);
-                        LabelData newLabelData = (LabelData)srcLabelData.Clone();
+                        var srcLabelData = msgFile.labelDatas.Find(mf => mf.labelName == srcLabelName);
+                        var newLabelData = (GameDataTypes.LabelData)srcLabelData.Clone();
                         newLabelData.labelName = dstLabelName;
                         newLabelData.labelIndex = gameData.GetPokemon(dstMonsNo, dstFormNo).personalID;
                         newLabelData.arrayIndex = newLabelData.labelIndex;
@@ -838,8 +838,8 @@ namespace ImpostersOrdeal
                     {
                         string srcLabelName = formDescriptions ? $"DP_pokedex_pearl_{srcMonsNo:D3}_{srcFormNo:D3}" : $"DP_pokedex_pearl_{srcMonsNo:D3}";
                         string dstLabelName = formDescriptions ? $"DP_pokedex_pearl_{dstMonsNo:D3}_{dstFormNo:D3}" : $"DP_pokedex_pearl_{dstMonsNo:D3}";
-                        LabelData srcLabelData = msgFile.labelDatas.Find(mf => mf.labelName == srcLabelName);
-                        LabelData newLabelData = (LabelData)srcLabelData.Clone();
+                        var srcLabelData = msgFile.labelDatas.Find(mf => mf.labelName == srcLabelName);
+                        var newLabelData = (GameDataTypes.LabelData)srcLabelData.Clone();
                         newLabelData.labelName = dstLabelName;
                         newLabelData.labelIndex = gameData.GetPokemon(dstMonsNo, dstFormNo).personalID;
                         newLabelData.arrayIndex = newLabelData.labelIndex;
@@ -851,8 +851,8 @@ namespace ImpostersOrdeal
                     {
                         string srcLabelName = "ZKN_TYPE_" + srcMonsNo.ToString("D3");
                         string dstLabelName = "ZKN_TYPE_" + dstMonsNo.ToString("D3");
-                        LabelData srcLabelData = msgFile.labelDatas.Find(mf => mf.labelName == srcLabelName);
-                        LabelData newLabelData = (LabelData)srcLabelData.Clone();
+                        var srcLabelData = msgFile.labelDatas.Find(mf => mf.labelName == srcLabelName);
+                        var newLabelData = (GameDataTypes.LabelData)srcLabelData.Clone();
                         newLabelData.labelName = dstLabelName;
                         newLabelData.labelIndex = dstMonsNo;
                         newLabelData.arrayIndex = newLabelData.labelIndex;
@@ -862,8 +862,8 @@ namespace ImpostersOrdeal
 
                     if (msgFile.mName.Contains("ss_zkn_form"))
                     {
-                        LabelData baseLabelData = null;
-                        foreach (LabelData labelData in msgFile.labelDatas)
+                        GameDataTypes.LabelData baseLabelData = null;
+                        foreach (var labelData in msgFile.labelDatas)
                         {
                             string baseLabelName = string.Format("ZKN_FORM_{0}_{1}", srcMonsNo.ToString("D3"), srcFormNo.ToString("D3"));
                             if (labelData.labelName == baseLabelName)
@@ -871,7 +871,7 @@ namespace ImpostersOrdeal
                                 baseLabelData = labelData;
                             }
                         }
-                        LabelData newLabelData = (LabelData) baseLabelData.Clone();
+                        var newLabelData = (GameDataTypes.LabelData)baseLabelData.Clone();
                         newLabelData.labelName = string.Format("ZKN_FORM_{0}_{1}", dstMonsNo.ToString("D3"), dstFormNo.ToString("D3"));
                         newLabelData.labelIndex = gameData.GetPokemon(dstMonsNo, dstFormNo).personalID;
                         newLabelData.arrayIndex = newLabelData.labelIndex;
@@ -882,8 +882,8 @@ namespace ImpostersOrdeal
 
                     if (msgFile.mName.Contains("ss_zkn_height"))
                     {
-                        LabelData baseLabelData = null;
-                        foreach (LabelData labelData in msgFile.labelDatas)
+                        GameDataTypes.LabelData baseLabelData = null;
+                        foreach (var labelData in msgFile.labelDatas)
                         {
                             string baseLabelName = string.Format("ZKN_HEIGHT_{0}_{1}", srcMonsNo.ToString("D3"), srcFormNo.ToString("D3"));
                             if (labelData.labelName == baseLabelName)
@@ -891,7 +891,7 @@ namespace ImpostersOrdeal
                                 baseLabelData = labelData;
                             }
                         }
-                        LabelData newLabelData = (LabelData)baseLabelData.Clone();
+                        var newLabelData = (GameDataTypes.LabelData)baseLabelData.Clone();
                         newLabelData.labelName = string.Format("ZKN_HEIGHT_{0}_{1}", dstMonsNo.ToString("D3"), dstFormNo.ToString("D3"));
                         newLabelData.labelIndex = gameData.GetPokemon(dstMonsNo, dstFormNo).personalID;
                         newLabelData.arrayIndex = newLabelData.labelIndex;
@@ -901,8 +901,8 @@ namespace ImpostersOrdeal
 
                     if (msgFile.mName.Contains("ss_zkn_weight"))
                     {
-                        LabelData baseLabelData = null;
-                        foreach (LabelData labelData in msgFile.labelDatas)
+                        GameDataTypes.LabelData baseLabelData = null;
+                        foreach (var labelData in msgFile.labelDatas)
                         {
                             string baseLabelName = string.Format("ZKN_WEIGHT_{0}_{1}", srcMonsNo.ToString("D3"), srcFormNo.ToString("D3"));
                             if (labelData.labelName == baseLabelName)
@@ -910,7 +910,7 @@ namespace ImpostersOrdeal
                                 baseLabelData = labelData;
                             }
                         }
-                        LabelData newLabelData = (LabelData)baseLabelData.Clone();
+                        var newLabelData = (GameDataTypes.LabelData)baseLabelData.Clone();
                         newLabelData.labelName = string.Format("ZKN_WEIGHT_{0}_{1}", dstMonsNo.ToString("D3"), dstFormNo.ToString("D3"));
                         newLabelData.labelIndex = gameData.GetPokemon(dstMonsNo, dstFormNo).personalID;
                         newLabelData.arrayIndex = newLabelData.labelIndex;

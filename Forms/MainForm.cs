@@ -407,11 +407,11 @@ namespace ImpostersOrdeal
             loadingDisplay = new(StartLoadingDisplay);
             loadingDisplay.Start();
             Thread.Sleep(100);
-            DataParser.CommitChanges();
+            //DataParser.CommitChanges();
             DataParser.CommitChangesToYAML();
 
             loadingForm.UpdateSubTask(flavor.GetThought());
-            fileManager.ExportMod();
+            //fileManager.ExportMod();
             fileManager.ExportModToYAML();
             fileManager.DeleteTemporaryFiles();
             loadingForm.Finish();
@@ -420,7 +420,7 @@ namespace ImpostersOrdeal
                 "And that should be it! Your very own mod has\n" +
                 "been created! I'll see myself out now.\n" +
                 "Oh, and if you wonder where it is, I placed it right\n" +
-                "alongside my executable, \"" + FileManager.outputModName + "\".",
+                "alongside my executable, \"" + FileManager.outputYAMLModName + "\".",
                   "Success!", MessageBoxButtons.OK, MessageBoxIcon.Information);
             Close();
         }

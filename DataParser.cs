@@ -2023,12 +2023,12 @@ namespace ImpostersOrdeal
             for (int i = 0; i < addPersonalTableArray.Length; i++)
             {
                 PersonalMasterdatas.AddPersonalTable addPersonal = new();
-                addPersonal.valid_flag = addPersonalTableArray[i]["valid_flag"].value.value.asUInt8 == 1;
+                addPersonal.valid_flag = addPersonalTableArray[i]["valid_flag"].value.value.asUInt8 != 0;
                 addPersonal.monsno = addPersonalTableArray[i]["monsno"].value.value.asUInt16;
                 addPersonal.formno = addPersonalTableArray[i]["formno"].value.value.asUInt16;
-                addPersonal.isEnableSynchronize = addPersonalTableArray[i]["isEnableSynchronize"].value.value.asUInt8 == 0;
+                addPersonal.isEnableSynchronize = addPersonalTableArray[i]["isEnableSynchronize"].value.value.asUInt8 != 0;
                 addPersonal.escape = addPersonalTableArray[i]["escape"].value.value.asUInt8;
-                addPersonal.isDisableReverce = addPersonalTableArray[i]["isDisableReverce"].value.value.asUInt8 == 0;
+                addPersonal.isDisableReverce = addPersonalTableArray[i]["isDisableReverce"].value.value.asUInt8 != 0;
                 gameData.addPersonalTables.Add(addPersonal);
             }
         }
@@ -2044,9 +2044,9 @@ namespace ImpostersOrdeal
                     valid_flag = addPersonalTableArray[i].ValidFlag != 0,
                     monsno = addPersonalTableArray[i].Monsno,
                     formno = addPersonalTableArray[i].Formno,
-                    isEnableSynchronize = addPersonalTableArray[i].IsEnableSynchronize == 0,
+                    isEnableSynchronize = addPersonalTableArray[i].IsEnableSynchronize != 0,
                     escape = addPersonalTableArray[i].Escape,
-                    isDisableReverce = addPersonalTableArray[i].IsDisableReverce == 0,
+                    isDisableReverce = addPersonalTableArray[i].IsDisableReverce != 0,
                 };
 
                 gameData.addPersonalTables.Add(addPersonal);
@@ -3890,7 +3890,7 @@ namespace ImpostersOrdeal
         {
             if (gameData.IsModified(GameDataSet.DataField.EvScripts))
                 CommitEvScriptsYAML();
-            /*if (gameData.IsModified(GameDataSet.DataField.PickupItems))
+            if (gameData.IsModified(GameDataSet.DataField.PickupItems))
                 CommitPickupItemsYAML();
             if (gameData.IsModified(GameDataSet.DataField.ShopTables))
                 CommitShopTablesYAML();
@@ -3899,10 +3899,10 @@ namespace ImpostersOrdeal
             if (gameData.IsModified(GameDataSet.DataField.BattleTowerTrainers))
                 CommitBattleTowerTrainersYAML();
             if (gameData.IsModified(GameDataSet.DataField.BattleTowerTrainerPokemons))
-                CommitBattleTowerPokemonYAML();*/
+                CommitBattleTowerPokemonYAML();
             if (gameData.IsModified(GameDataSet.DataField.EncounterTableFiles))
                 CommitEncounterTablesYAML();
-            /*if (gameData.IsModified(GameDataSet.DataField.MessageFileSets))
+            if (gameData.IsModified(GameDataSet.DataField.MessageFileSets))
                 CommitMessageFileSetsYAML();
             if (gameData.IsModified(GameDataSet.DataField.UgAreas) ||
             gameData.IsModified(GameDataSet.DataField.UgEncounterFiles) ||
@@ -3918,10 +3918,6 @@ namespace ImpostersOrdeal
                 CommitTMsYAML();
             if (gameData.IsModified(GameDataSet.DataField.Moves))
                 CommitMovesYAML();
-            if (gameData.IsModified(GameDataSet.DataField.AudioData))
-                CommitAudioYAML();
-            if (gameData.IsModified(GameDataSet.DataField.GlobalMetadata))
-                CommitGlobalMetadataYAML();
             if (gameData.IsModified(GameDataSet.DataField.UIMasterdatas))
                 CommitUIMasterdatasYAML();
             if (gameData.IsModified(GameDataSet.DataField.AddPersonalTable))
@@ -3931,19 +3927,23 @@ namespace ImpostersOrdeal
             if (gameData.IsModified(GameDataSet.DataField.PokemonInfo))
                 CommitPokemonInfoYAML();
             if (gameData.IsModified(GameDataSet.DataField.ContestResultMotion))
-                CommitContestMasterDatasYAML();*/
+                CommitContestMasterDatasYAML();
+            if (gameData.IsModified(GameDataSet.DataField.ExternalStarters))
+                CommitExternalStarters(true);
+            if (gameData.IsModified(GameDataSet.DataField.ExternalHoneyTrees))
+                CommitExternalHoneyTrees(true);
         }
 
-        private static void CommitExternalHoneyTrees()
+        private static void CommitExternalHoneyTrees(bool unityPath = false)
         {
             foreach ((string name, Starter _) in gameData.externalStarters)
-                fileManager.CommitExternalJson($"Encounters\\Starter\\{name}.json");
+                fileManager.CommitExternalJson($"Encounters\\Starter\\{name}.json", unityPath);
         }
 
-        private static void CommitExternalStarters()
+        private static void CommitExternalStarters(bool unityPath = false)
         {
             foreach ((string name, HoneyTreeZone _) in gameData.externalHoneyTrees)
-                fileManager.CommitExternalJson($"Encounters\\HoneyTrees\\{name}.json");
+                fileManager.CommitExternalJson($"Encounters\\HoneyTrees\\{name}.json", unityPath);
         }
 
         private static void CommitContestMasterDatas()
@@ -3969,6 +3969,23 @@ namespace ImpostersOrdeal
             }
             monoBehaviour["ResultMotion"].children[0].SetChildrenList(newResultMotionSheet.ToArray());
             fileManager.WriteMonoBehaviour(PathEnum.ContestMasterdatas, monoBehaviour);
+        }
+
+        private static void CommitContestMasterDatasYAML()
+        {
+            gameData.contestResultMotion.Sort();
+            var monoBehaviour = fileManager.GetYAMLs(PathEnum.ContestMasterdatas).Find(y => y.MonoBehaviour?.Name == "ContestConfigDatas").MonoBehaviour as ContestConfigDatas;
+
+            monoBehaviour.ResultMotion = gameData.contestResultMotion.Select(r => new SheetResultMotion()
+            {
+                ValidFlag = r.validFlag,
+                ID = r.id,
+                MonsNo = r.monsNo,
+                WinAnim = r.winAnim,
+                LoseAnim = r.loseAnim,
+                WaitAnim = r.waitAnim,
+                Duration = r.duration,
+            }).ToArray();
         }
 
         private static void CommitDprBin()
@@ -4065,6 +4082,62 @@ namespace ImpostersOrdeal
             fileManager.WriteMonoBehaviour(PathEnum.BattleMasterdatas, animationData);
         }
 
+        private static void CommitMovesYAML()
+        {
+            var monoBehaviour = fileManager.GetYAMLs(PathEnum.PersonalMasterdatas).Find(y => y.MonoBehaviour?.Name == "WazaTable").MonoBehaviour as WazaTable;
+            var animationData = fileManager.GetYAMLs(PathEnum.BattleMasterdatas).Find(y => y.MonoBehaviour?.Name == "BattleDataTable").MonoBehaviour as BattleDataTable;
+
+            monoBehaviour.Waza = gameData.moves.Select(m => new SheetWaza()
+            {
+                WazaNo = m.moveID,
+                IsValid = m.isValid,
+                Type = m.typingID,
+                Category = m.category,
+                DamageType = m.damageCategoryID,
+                Power = m.power,
+                HitPer = m.hitPer,
+                BasePP = m.basePP,
+                Priority = m.priority,
+                HitCountMax = m.hitCountMax,
+                HitCountMin = m.hitCountMin,
+                SickID = m.sickID,
+                SickPer = m.sickPer,
+                SickCont = m.sickCont,
+                SickTurnMin = m.sickTurnMin,
+                SickTurnMax = m.sickTurnMax,
+                CriticalRank = m.criticalRank,
+                ShrinkPer = m.shrinkPer,
+                AISeqNo = m.aiSeqNo,
+                DamageRecoverRatio = m.damageRecoverRatio,
+                HPRecoverRatio = m.hpRecoverRatio,
+                Target = m.target,
+                RankEffType1 = m.rankEffType1,
+                RankEffType2 = m.rankEffType2,
+                RankEffType3 = m.rankEffType3,
+                RankEffValue1 = m.rankEffValue1,
+                RankEffValue2 = m.rankEffValue2,
+                RankEffValue3 = m.rankEffValue3,
+                RankEffPer1 = m.rankEffPer1,
+                RankEffPer2 = m.rankEffPer2,
+                RankEffPer3 = m.rankEffPer3,
+                Flags = m.flags,
+                ContestWazaNo = m.contestWazaNo,
+            }).ToArray();
+
+            animationData.BattleWazaData = gameData.moves.Select(m => new SheetBattleWazaData()
+            {
+                WazaNo = m.moveID,
+                CmdSeqName = m.cmdSeqName,
+                CmdSeqNameLegend = m.cmdSeqNameLegend,
+                NotShortenTurnType0 = m.notShortenTurnType0,
+                NotShortenTurnType1 = m.notShortenTurnType1,
+                TurnType1 = m.turnType1,
+                TurnType2 = m.turnType2,
+                TurnType3 = m.turnType3,
+                TurnType4 = m.turnType4,
+            }).ToArray();
+        }
+
         /// <summary>
         ///  Updates loaded bundle with TMs.
         /// </summary>
@@ -4083,6 +4156,21 @@ namespace ImpostersOrdeal
             }
 
             fileManager.WriteMonoBehaviour(PathEnum.PersonalMasterdatas, monoBehaviour);
+        }
+
+        /// <summary>
+        ///  Updates loaded yaml with TMs.
+        /// </summary>
+        private static void CommitTMsYAML()
+        {
+            var monoBehaviour = fileManager.GetYAMLs(PathEnum.PersonalMasterdatas).Find(y => y.MonoBehaviour?.Name == "ItemTable").MonoBehaviour as ItemTable;
+
+            monoBehaviour.WazaMachine = gameData.tms.Select(t => new SheetWazaMachine()
+            {
+                ItemNo = t.itemID,
+                MachineNo = t.machineNo,
+                WazaNo = t.moveID,
+            }).ToArray();
         }
 
         /// <summary>
@@ -4135,6 +4223,56 @@ namespace ImpostersOrdeal
 
             fileManager.WriteMonoBehaviour(PathEnum.PersonalMasterdatas, monoBehaviour);
         }
+
+        /// <summary>
+        ///  Updates loaded bundle with Items.
+        /// </summary>
+        private static void CommitItemsYAML()
+        {
+            var monoBehaviour = fileManager.GetYAMLs(PathEnum.PersonalMasterdatas).Find(y => y.MonoBehaviour?.Name == "ItemTable").MonoBehaviour as ItemTable;
+
+            monoBehaviour.Item = gameData.items.Select((it, i) => new SheetItem()
+            {
+                No = it.itemID,
+                Type = it.type,
+                IconID = it.iconID,
+                Price = it.price,
+                BPPrice = it.bpPrice,
+                Eqp = i < monoBehaviour.Item.Length ? monoBehaviour.Item[i].Eqp : byte.MinValue,
+                Atc = i < monoBehaviour.Item.Length ? monoBehaviour.Item[i].Atc : byte.MinValue,
+                NageAtc = it.nageAtc,
+                SizenAtc = it.sizenAtc,
+                SizenType = it.sizenType,
+                TuibamuEff = it.tuibamuEff,
+                Sort = it.sort,
+                Group = it.group,
+                GroupID = it.groupID,
+                FldPocket = it.fldPocket,
+                FieldFunc = it.fieldFunc,
+                BattleFunc = it.battleFunc,
+                WkCmn = i < monoBehaviour.Item.Length ? monoBehaviour.Item[i].WkCmn : byte.MinValue,
+                WkCriticalUp = it.criticalRanks,
+                WkAtcUp = it.atkStages,
+                WkDefUp = it.defStages,
+                WkAgiUp = it.spdStages,
+                WkHitUp = it.accStages,
+                WkSpaUp = it.spAtkStages,
+                WkSpdUp = it.spDefStages,
+                WkPrmPPRcv = it.ppRestoreAmount,
+                WkPrmHPExp = it.hpEvIncrease,
+                WkPrmPowExp = it.atkEvIncrease,
+                WkPrmDefExp = it.defEvIncrease,
+                WkPrmAgiExp = it.spdEvIncrease,
+                WkPrmSpaExp = it.spAtkEvIncrease,
+                WkPrmSpdExp = it.spDefEvIncrease,
+                WkFriend1 = it.friendshipIncrease1,
+                WkFriend2 = it.friendshipIncrease2,
+                WkFriend3 = it.friendshipIncrease3,
+                WkPrmHPRcv = it.hpRestoreAmount,
+                Flags0 = it.flags0,
+            }).ToArray();
+        }
+
         private static void CommitPokemonInfo()
         {
             gameData.pokemonInfos.Sort();
@@ -4278,6 +4416,77 @@ namespace ImpostersOrdeal
             fileManager.WriteMonoBehaviour(PathEnum.DprMasterdatas, pokemonInfo);
         }
 
+        private static void CommitPokemonInfoYAML()
+        {
+            gameData.pokemonInfos.Sort();
+
+            var pokemonInfo = fileManager.GetYAMLs(PathEnum.DprMasterdatas).Find(y => y.MonoBehaviour?.Name == "PokemonInfo").MonoBehaviour as PokemonInfo;
+
+            pokemonInfo.Catalog = gameData.pokemonInfos.Select(p => new SheetCatalog()
+            {
+                UniqueID = p.UniqueID,
+                No = p.No,
+                SinnohNo = p.SinnohNo,
+                MonsNo = p.MonsNo,
+                FormNo = p.FormNo,
+                Sex = p.Sex,
+                Rare = p.Rare ? (byte)1 : (byte)0,
+                AssetBundleName = p.AssetBundleName,
+                BattleScale = p.BattleScale,
+                ContestScale = p.ContestScale,
+                FieldScale = p.FieldScale,
+                FieldChikaScale = p.FieldChikaScale,
+                StatueScale = p.StatueScale,
+                FieldWalkingScale = p.FieldWalkingScale,
+                FieldFureaiScale = p.FieldFureaiScale,
+                MenuScale = p.MenuScale,
+                ModelMotion = p.ModelMotion,
+                ModelOffset = new UnityVector3() { X = p.ModelOffset.X, Y = p.ModelOffset.Y, Z = p.ModelOffset.Z },
+                ModelRotationAngle = new UnityVector3() { X = p.ModelRotationAngle.X, Y = p.ModelRotationAngle.Y, Z = p.ModelRotationAngle.Z },
+                DistributionScale = p.DistributionScale,
+                DistributionModelMotion = p.DistributionModelMotion,
+                DistributionModelOffset = new UnityVector3() { X = p.DistributionModelOffset.X, Y = p.DistributionModelOffset.Y, Z = p.DistributionModelOffset.Z },
+                DistributionModelRotationAngle = new UnityVector3() { X = p.DistributionModelRotationAngle.X, Y = p.DistributionModelRotationAngle.Y, Z = p.DistributionModelRotationAngle.Z },
+                VoiceScale = p.VoiceScale,
+                VoiceModelMotion = p.VoiceModelMotion,
+                VoiceModelOffset = new UnityVector3() { X = p.VoiceModelOffset.X, Y = p.VoiceModelOffset.Y, Z = p.VoiceModelOffset.Z },
+                VoiceModelRotationAngle = new UnityVector3() { X = p.VoiceModelRotationAngle.X, Y = p.VoiceModelRotationAngle.Y, Z = p.VoiceModelRotationAngle.Z },
+                CenterPointOffset = new UnityVector3() { X = p.CenterPointOffset.X, Y = p.CenterPointOffset.Y, Z = p.CenterPointOffset.Z },
+                RotationLimitAngle = new UnityVector2() { X = p.RotationLimitAngle.X, Y = p.RotationLimitAngle.Y },
+                StatusScale = p.StatusScale,
+                StatusModelMotion = p.StatusModelMotion,
+                StatusModelOffset = new UnityVector3() { X = p.StatusModelOffset.X, Y = p.StatusModelOffset.Y, Z = p.StatusModelOffset.Z },
+                StatusModelRotationAngle = new UnityVector3() { X = p.StatusModelRotationAngle.X, Y = p.StatusModelRotationAngle.Y, Z = p.StatusModelRotationAngle.Z },
+                BoxScale = p.BoxScale,
+                BoxModelMotion = p.BoxModelMotion,
+                BoxModelOffset = new UnityVector3() { X = p.BoxModelOffset.X, Y = p.BoxModelOffset.Y, Z = p.BoxModelOffset.Z },
+                BoxModelRotationAngle = new UnityVector3() { X = p.BoxModelRotationAngle.X, Y = p.BoxModelRotationAngle.Y, Z = p.BoxModelRotationAngle.Z },
+                CompareScale = p.CompareScale,
+                CompareModelMotion = p.CompareModelMotion,
+                CompareModelOffset = new UnityVector3() { X = p.CompareModelOffset.X, Y = p.CompareModelOffset.Y, Z = p.CompareModelOffset.Z },
+                CompareModelRotationAngle = new UnityVector3() { X = p.CompareModelRotationAngle.X, Y = p.CompareModelRotationAngle.Y, Z = p.CompareModelRotationAngle.Z },
+                BrakeStart = p.BrakeStart,
+                BrakeEnd = p.BrakeEnd,
+                WalkSpeed = p.WalkSpeed,
+                RunSpeed = p.RunSpeed,
+                WalkStart = p.WalkStart,
+                RunStart = p.RunStart,
+                BodySize = p.BodySize,
+                AppearLimit = p.AppearLimit,
+                MoveType = (int)p.MoveType,
+                GroundEffect = p.GroundEffect ? (byte)1 : (byte)0,
+                Waitmoving = p.Waitmoving ? (byte)1 : (byte)0,
+                BattleAjustHeight = p.BattleAjustHeight,
+            }).ToArray();
+
+            pokemonInfo.Trearuki = gameData.pokemonInfos.Select(p => new SheetTrearuki()
+            {
+                Enable = p.trearuki.enable ? (byte)1 : (byte)0,
+                AnimeIndex = p.trearuki.animeIndex.ToArray(),
+                AnimeDuration = p.trearuki.animeDuration.ToArray(),
+            }).ToArray();
+        }
+
         private static void CommitMotionTimingData()
         {
             gameData.motionTimingData.Sort();
@@ -4322,6 +4531,39 @@ namespace ImpostersOrdeal
 
             fileManager.WriteMonoBehaviour(PathEnum.BattleMasterdatas, BattleDataTable);
         }
+
+        private static void CommitMotionTimingDataYAML()
+        {
+            gameData.motionTimingData.Sort();
+
+            var monoBehaviours = fileManager.GetYAMLs(PathEnum.BattleMasterdatas).Find(y => y.MonoBehaviour?.Name == "BattleDataTable").MonoBehaviour as BattleDataTable;
+            monoBehaviours.MotionTimingData = gameData.motionTimingData.Select(m => new SheetMotionTimingData()
+            {
+                MonsNo = m.MonsNo,
+                FormNo = m.FormNo,
+                Sex = m.Sex,
+                Buturi01 = m.Buturi01,
+                Buturi02 = m.Buturi02,
+                Buturi03 = m.Buturi03,
+                Tokusyu01 = m.Tokusyu01,
+                Tokusyu02 = m.Tokusyu02,
+                Tokusyu03 = m.Tokusyu03,
+                BodyBlow = m.BodyBlow,
+                Punch = m.Punch,
+                Kick = m.Kick,
+                Tail = m.Tail,
+                Bite = m.Bite,
+                Peck = m.Peck,
+                Radial = m.Radial,
+                Cry = m.Cry,
+                Dust = m.Dust,
+                Shot = m.Shot,
+                Guard = m.Guard,
+                LandingFall = m.LandingFall,
+                LandingFallEase = m.LandingFallEase,
+            }).ToArray();
+        }
+
         private static void CommitAddPersonalTable()
         {
             gameData.addPersonalTables.Sort();
@@ -4351,6 +4593,23 @@ namespace ImpostersOrdeal
             fileManager.WriteMonoBehaviour(PathEnum.PersonalMasterdatas, AddPersonalTable);
         }
 
+
+        private static void CommitAddPersonalTableYAML()
+        {
+            gameData.addPersonalTables.Sort();
+
+            var monoBehaviours = fileManager.GetYAMLs(PathEnum.PersonalMasterdatas).Find(y => y.MonoBehaviour?.Name == "AddPersonalTable").MonoBehaviour as AddPersonalTable;
+            monoBehaviours.AddPersonal = gameData.addPersonalTables.Select(p => new SheetAddPersonal()
+            {
+                ValidFlag = p.valid_flag ? (byte)1 : (byte)0,
+                Monsno = p.monsno,
+                Formno = p.formno,
+                IsEnableSynchronize = p.isEnableSynchronize ? (byte)1 : (byte)0,
+                Escape = p.escape,
+                IsDisableReverce = p.isDisableReverce ? (byte)1 : (byte)0,
+            }).ToArray();
+        }
+
         private static void CommitUIMasterdatas()
         {
             gameData.uiPokemonIcon.Sort();
@@ -4364,11 +4623,7 @@ namespace ImpostersOrdeal
 
             AssetTypeValueField uiDatabase = monoBehaviours.Find(m => Encoding.Default.GetString(m.children[3].value.value.asString) == "UIDatabase");
             AssetTypeValueField distributionTable = monoBehaviours.Find(m => Encoding.Default.GetString(m.children[3].value.value.asString) == "DistributionTable");
-            monoBehaviours = new()
-{
-uiDatabase,
-distributionTable
-};
+            monoBehaviours = new() { uiDatabase, distributionTable };
 
             // Pokemon Icon
             AssetTypeValueField[] pokemonIcons = uiDatabase["PokemonIcon"].children[0].children;
@@ -4490,6 +4745,131 @@ distributionTable
             CommitDistributionSheet(distributionTable["Pearl_DungeonTable"].children[0], gameData.uiDistributionTable.pearlDungeonTable);
 
             fileManager.WriteMonoBehaviours(PathEnum.UIMasterdatas, monoBehaviours.ToArray());
+        }
+
+        private static void CommitUIMasterdatasYAML()
+        {
+            gameData.uiPokemonIcon.Sort();
+            gameData.uiAshiatoIcon.Sort();
+            gameData.uiPokemonVoice.Sort();
+            gameData.uiZukanDisplay.Sort();
+            gameData.uiZukanCompareHeights.Sort();
+            gameData.uiSearchPokeIconSex.Sort();
+
+            var monoBehaviours = fileManager.GetYAMLs(PathEnum.UIMasterdatas);
+
+            var uiDatabase = monoBehaviours.Find(y => y.MonoBehaviour?.Name == "UIDatabase").MonoBehaviour as UIDatabase;
+            var distributionTable = monoBehaviours.Find(y => y.MonoBehaviour?.Name == "DistributionTable").MonoBehaviour as DistributionTable;
+
+            // Pokemon Icon
+            uiDatabase.PokemonIcon = gameData.uiPokemonIcon.Select(i => new SheetPokemonIcon()
+            {
+                UniqueID = i.uniqueID,
+                AssetBundleName = i.assetBundleName,
+                AssetName = i.assetName,
+                AssetBundleNameLarge = i.assetBundleNameLarge,
+                AssetNameLarge = i.assetNameLarge,
+                AssetBundleNameDP = i.assetBundleNameDP,
+                AssetNameDP = i.assetNameDP,
+                HallofFameOffset = new UnityVector2() { X = i.hallofFameOffset.X, Y = i.hallofFameOffset.Y },
+            }).ToArray();
+
+            // Ashiato Icon
+            uiDatabase.AshiatoIcon = gameData.uiAshiatoIcon.Select(i => new SheetAshiatoIcon()
+            {
+                UniqueID = i.uniqueID,
+                SideIconAssetName = i.sideIconAssetName,
+                BothIconAssetName = i.bothIconAssetName,
+            }).ToArray();
+
+            // Pokemon Voice
+            uiDatabase.PokemonVoice = gameData.uiPokemonVoice.Select(v => new SheetPokemonVoice()
+            {
+                UniqueID = v.uniqueID,
+                WwiseEvent = v.wwiseEvent,
+                StopEventId = v.stopEventId,
+                CenterPointOffset = new UnityVector3(){ X = v.centerPointOffset.X, Y = v.centerPointOffset.Y, Z = v.centerPointOffset.Z },
+                RotationLimits = v.rotationLimits ? (byte)1 : (byte)0,
+                RotationLimitAngle = new UnityVector2() { X = v.rotationLimitAngle.X, Y = v.rotationLimitAngle.Y },
+            }).ToArray();
+
+            // ZukanDisplay
+            uiDatabase.ZukanDisplay = gameData.uiZukanDisplay.Select(z => new SheetZukanDisplay()
+            {
+                UniqueID = z.uniqueID,
+                MoveLimit = new UnityVector3() { X = z.moveLimit.X, Y = z.moveLimit.Y, Z = z.moveLimit.Z },
+                ModelOffset = new UnityVector3() { X = z.modelOffset.X, Y = z.modelOffset.Y, Z = z.modelOffset.Z },
+                ModelRotationAngle = new UnityVector2() { X = z.modelRotationAngle.X, Y = z.modelRotationAngle.Y },
+            }).ToArray();
+
+            // ZukanCompareHeight
+            uiDatabase.ZukanCompareHeight = gameData.uiZukanCompareHeights.Select(z => new SheetZukanCompareHeight()
+            {
+                UniqueID = z.uniqueID,
+                PlayerScaleFactor = z.playerScaleFactor,
+                PlayerOffset = new UnityVector3() { X = z.playerOffset.X, Y = z.playerOffset.Y, Z = z.playerOffset.Z },
+                PlayerRotationAngle = new UnityVector2() { X = z.playerRotationAngle.X, Y = z.playerRotationAngle.Y },
+            }).ToArray();
+
+            // SearchPokeIconSex
+            uiDatabase.SearchPokeIconSex = gameData.uiSearchPokeIconSex.Select(s => new SheetSearchPokeIconSex()
+            {
+                MonsNo = s.monsNo,
+                Sex = s.sex,
+            }).ToArray();
+
+            // DistributionTable
+            distributionTable.DiamondFieldTable = gameData.uiDistributionTable.diamondFieldTable.Select(d => new SheetDistributionTable()
+            {
+                BeforeMorning = d.beforeMorning,
+                BeforeDaytime = d.beforeDaytime,
+                BeforeNight = d.beforeNight,
+                AfterMorning = d.afterMorning,
+                AfterDaytime = d.afterDaytime,
+                AfterNight = d.afterNight,
+                Fishing = d.fishing,
+                PokemonTraser = d.pokemonTraser,
+                HoneyTree = d.honeyTree,
+            }).ToArray();
+
+            distributionTable.DiamondDungeonTable = gameData.uiDistributionTable.diamondDungeonTable.Select(d => new SheetDistributionTable()
+            {
+                BeforeMorning = d.beforeMorning,
+                BeforeDaytime = d.beforeDaytime,
+                BeforeNight = d.beforeNight,
+                AfterMorning = d.afterMorning,
+                AfterDaytime = d.afterDaytime,
+                AfterNight = d.afterNight,
+                Fishing = d.fishing,
+                PokemonTraser = d.pokemonTraser,
+                HoneyTree = d.honeyTree,
+            }).ToArray();
+
+            distributionTable.PearlFieldTable = gameData.uiDistributionTable.pearlFieldTable.Select(d => new SheetDistributionTable()
+            {
+                BeforeMorning = d.beforeMorning,
+                BeforeDaytime = d.beforeDaytime,
+                BeforeNight = d.beforeNight,
+                AfterMorning = d.afterMorning,
+                AfterDaytime = d.afterDaytime,
+                AfterNight = d.afterNight,
+                Fishing = d.fishing,
+                PokemonTraser = d.pokemonTraser,
+                HoneyTree = d.honeyTree,
+            }).ToArray();
+
+            distributionTable.PearlDungeonTable = gameData.uiDistributionTable.pearlDungeonTable.Select(d => new SheetDistributionTable()
+            {
+                BeforeMorning = d.beforeMorning,
+                BeforeDaytime = d.beforeDaytime,
+                BeforeNight = d.beforeNight,
+                AfterMorning = d.afterMorning,
+                AfterDaytime = d.afterDaytime,
+                AfterNight = d.afterNight,
+                Fishing = d.fishing,
+                PokemonTraser = d.pokemonTraser,
+                HoneyTree = d.honeyTree,
+            }).ToArray();
         }
 
         private static void CommitDistributionSheet(AssetTypeValueField sheetATVF, List<UIMasterdatas.DistributionEntry> sheet)
@@ -4701,6 +5081,110 @@ distributionTable
         }
 
         /// <summary>
+        ///  Updates loaded yaml with Pokemon.
+        /// </summary>
+        private static void CommitPokemonYAML()
+        {
+            var monoBehaviours = fileManager.GetYAMLs(PathEnum.PersonalMasterdatas);
+
+            var wazaOboeTable = monoBehaviours.Find(y => y.MonoBehaviour?.Name == "WazaOboeTable").MonoBehaviour as WazaOboeTable;
+            var tamagoWazaTable = monoBehaviours.Find(y => y.MonoBehaviour?.Name == "TamagoWazaTable").MonoBehaviour as TamagoWazaTable;
+            var evolveTable = monoBehaviours.Find(y => y.MonoBehaviour?.Name == "EvolveTable").MonoBehaviour as EvolveTable;
+            var personalTable = monoBehaviours.Find(y => y.MonoBehaviour?.Name == "PersonalTable").MonoBehaviour as PersonalTable;
+
+            personalTable.Personal = gameData.personalEntries.Select(p => new SheetPersonal()
+            {
+                ValidFlag = p.validFlag,
+                ID = p.personalID,
+                Monsno = p.dexID,
+                FormIndex = p.formIndex,
+                FormMax = p.formMax,
+                Color = p.color,
+                GraNo = p.graNo,
+                BasicHP = p.basicHp,
+                BasicAtk = p.basicAtk,
+                BasicDef = p.basicDef,
+                BasicAgi = p.basicSpd,
+                BasicSpatk = p.basicSpAtk,
+                BasicSpdef = p.basicSpDef,
+                Type1 = p.typingID1,
+                Type2 = p.typingID2,
+                GetRate = p.getRate,
+                Rank = p.rank,
+                ExpValue = p.expValue,
+                Item1 = p.item1,
+                Item2 = p.item2,
+                Item3 = p.item3,
+                Sex = p.sex,
+                EggBirth = p.eggBirth,
+                InitialFriendship = p.initialFriendship,
+                EggGroup1 = p.eggGroup1,
+                EggGroup2 = p.eggGroup2,
+                Grow = p.grow,
+                Tokusei1 = p.abilityID1,
+                Tokusei2 = p.abilityID2,
+                Tokusei3 = p.abilityID3,
+                GiveExp = p.giveExp,
+                Height = p.height,
+                Weight = p.weight,
+                ChihouZukanNo = p.chihouZukanNo,
+                Machine1 = p.machine1,
+                Machine2 = p.machine2,
+                Machine3 = p.machine3,
+                Machine4 = p.machine4,
+                HidenMachine = p.hiddenMachine,
+                EggMonsno = p.eggMonsno,
+                EggFormno = p.eggFormno,
+                EggFormnoKawarazunoishi = p.eggFormnoKawarazunoishi,
+                EggFormInheritKawarazunoishi = p.eggFormInheritKawarazunoishi,
+            }).ToArray();
+
+            wazaOboeTable.WazaOboe = gameData.personalEntries.Select(p => new SheetWazaOboe()
+            {
+                ID = p.personalID,
+                Ar = p.levelUpMoves.SelectMany(l => new ushort[2]{ l.level, l.moveID }).ToArray(),
+            }).ToArray();
+
+            evolveTable.Evolve = gameData.personalEntries.Select(p => new SheetEvolve()
+            {
+                ID = p.personalID,
+                Ar = p.evolutionPaths.SelectMany(e => new ushort[5]{ e.method, e.parameter, e.destDexID, e.destFormID, e.level }).ToArray(),
+            }).ToArray();
+
+            tamagoWazaTable.Data = gameData.personalEntries.Select(p => new SheetTamagoWazaData()
+            {
+                No = p.dexID,
+                FormNo = (ushort)p.formID,
+                WazaNo = p.eggMoves.ToArray(),
+            }).ToArray();
+
+            foreach (var pokemon in gameData.personalEntries)
+                if (pokemon.externalTMLearnset != null)
+                    fileManager.CommitExternalJson($"MonData\\TMLearnset\\monsno_{pokemon.dexID}_formno_{pokemon.formID}.json");
+
+
+            // Sort?
+            /*newPersonalFields.Sort((atvf1, atvf2) => atvf1[1].GetValue().AsUInt().CompareTo(atvf2[1].GetValue().AsUInt()));
+            newLevelUpMoveFields.Sort((atvf1, atvf2) => atvf1["id"].GetValue().AsInt().CompareTo(atvf2["id"].GetValue().AsInt()));
+            newEvolveFields.Sort((atvf1, atvf2) => atvf1["id"].GetValue().AsInt().CompareTo(atvf2["id"].GetValue().AsInt()));
+            newEggMoveFields.Sort((atvf1, atvf2) =>
+            {
+                if (atvf1["formNo"].GetValue().AsUInt().CompareTo(atvf2["formNo"].GetValue().AsUInt()) != 0)
+                {
+                    if (atvf1["formNo"].GetValue().AsUInt() == 0)
+                        return -1;
+                    if (atvf2["formNo"].GetValue().AsUInt() == 0)
+                        return 1;
+                }
+
+                int i = atvf1["no"].GetValue().AsUInt().CompareTo(atvf2["no"].GetValue().AsUInt());
+                if (i == 0)
+                    i = atvf1["formNo"].GetValue().AsUInt().CompareTo(atvf2["formNo"].GetValue().AsUInt());
+                return i;
+            });*/
+        }
+
+        /// <summary>
         ///  Updates loaded bundle with UgEncounters.
         /// </summary>
         private static void CommitUgTables()
@@ -4806,6 +5290,76 @@ distributionTable
         }
 
         /// <summary>
+        ///  Updates loaded yaml with UgEncounters.
+        /// </summary>
+        private static void CommitUgTablesYAML()
+        {
+            var monoBehaviours = fileManager.GetYAMLs(PathEnum.Ugdata);
+            List<AssetTypeValueField> updatedMonoBehaviours = new();
+
+            var ugRandMark = monoBehaviours.Find(y => y.MonoBehaviour?.Name == "UgRandMark").MonoBehaviour as UgRandMark;
+            ugRandMark.Table = gameData.ugAreas.Select((u, i) => new SheetUgRandTable()
+            {
+                ID = u.id,
+                FileName = u.fileName,
+                Size = ugRandMark.Table[i].Size,
+                Min = ugRandMark.Table[i].Min,
+                Max = ugRandMark.Table[i].Max,
+                SMax = ugRandMark.Table[i].SMax,
+                MMax = ugRandMark.Table[i].MMax,
+                LMax = ugRandMark.Table[i].LMax,
+                LLMax = ugRandMark.Table[i].LLMax,
+                WaterMax = ugRandMark.Table[i].WaterMax,
+                TypeRate = ugRandMark.Table­[i].TypeRate,
+            }).ToArray();
+
+            var ugEncounterFileMonobehaviours = monoBehaviours.OfType<UgEncount>().ToList();
+            foreach (var encount in ugEncounterFileMonobehaviours)
+            {
+                var newMono = gameData.ugEncounterFiles.Find(u => u.mName == encount.Name);
+                encount.Table = newMono.ugEncounters.Select(u => new SheetUgEncountTable()
+                {
+                    Monsno = u.dexID,
+                    Version = u.version,
+                    ZukanFlag = u.zukanFlag,
+                }).ToArray();
+            }
+
+            var ugEncounterLevelMonobehaviour = monoBehaviours.Find(y => y.MonoBehaviour?.Name == "UgEncountLevel").MonoBehaviour as UgEncountLevel;
+            ugEncounterLevelMonobehaviour.Data = gameData.ugEncounterLevelSets.Select(u => new SheetUgEncountLevelData()
+            {
+                MinLv = u.minLv,
+                MaxLv = u.maxLv,
+            }).ToArray();
+
+            var ugSpecialPokemon = monoBehaviours.Find(y => y.MonoBehaviour?.Name == "UgSpecialPokemon").MonoBehaviour as UgSpecialPokemon;
+            ugSpecialPokemon.Sheet1 = gameData.ugSpecialEncounters.Select(u => new SheetUgSpecialPokemonSheet1()
+            {
+                ID = u.id,
+                Monsno = u.dexID,
+                Version = u.version,
+                DSpecialRate = u.dRate,
+                PSpecialRate = u.pRate,
+            }).ToArray();
+
+            var ugPokemonDataMonobehaviour = monoBehaviours.Find(y => y.MonoBehaviour?.Name == "UgPokemonData").MonoBehaviour as UgPokemonData;
+            ugPokemonDataMonobehaviour.Table = gameData.ugPokemonData.Select(u => new SheetUgPokemonDataTable()
+            {
+                Monsno = u.monsno,
+                Type1ID = u.type1ID,
+                Type2ID = u.type2ID,
+                Size = u.size,
+                MoveType = u.movetype,
+                ReactionCode = u.reactioncode,
+                MoveRate = u.moveRate,
+                SubmoveRate = u.submoveRate,
+                Reaction = u.reaction,
+                FlagRate = u.flagrate,
+                RateUp = u.rateup,
+            }).ToArray();
+        }
+
+        /// <summary>
         /// Builds an array of AssetTypeValueField objects from primitive values.
         /// </summary>
         private static AssetTypeValueField[] PrimitiveATVFArray<T>(T[] values, AssetTypeTemplateField attf)
@@ -4870,6 +5424,25 @@ distributionTable
             monoBehaviours = fileManager.GetMonoBehaviours(PathEnum.TradChinese);
             CommitMessageFiles(monoBehaviours, messageFiles);
             fileManager.WriteMonoBehaviours(PathEnum.TradChinese, monoBehaviours.ToArray());
+        }
+
+        /// <summary>
+        ///  Updates loaded yaml with MessageFileSets.
+        /// </summary>
+        private static void CommitMessageFileSetsYAML()
+        {
+            List<MessageFile> messageFiles = gameData.messageFileSets.SelectMany(mfs => mfs.messageFiles).ToList();
+
+            CommitMessageFilesYAML(fileManager.GetYAMLs(PathEnum.English).Select(y => y.MonoBehaviour as MsbtData).ToList(), messageFiles);
+            CommitMessageFilesYAML(fileManager.GetYAMLs(PathEnum.French).Select(y => y.MonoBehaviour as MsbtData).ToList(), messageFiles);
+            CommitMessageFilesYAML(fileManager.GetYAMLs(PathEnum.German).Select(y => y.MonoBehaviour as MsbtData).ToList(), messageFiles);
+            CommitMessageFilesYAML(fileManager.GetYAMLs(PathEnum.Italian).Select(y => y.MonoBehaviour as MsbtData).ToList(), messageFiles);
+            CommitMessageFilesYAML(fileManager.GetYAMLs(PathEnum.Jpn).Select(y => y.MonoBehaviour as MsbtData).ToList(), messageFiles);
+            CommitMessageFilesYAML(fileManager.GetYAMLs(PathEnum.JpnKanji).Select(y => y.MonoBehaviour as MsbtData).ToList(), messageFiles);
+            CommitMessageFilesYAML(fileManager.GetYAMLs(PathEnum.Korean).Select(y => y.MonoBehaviour as MsbtData).ToList(), messageFiles);
+            CommitMessageFilesYAML(fileManager.GetYAMLs(PathEnum.SimpChinese).Select(y => y.MonoBehaviour as MsbtData).ToList(), messageFiles);
+            CommitMessageFilesYAML(fileManager.GetYAMLs(PathEnum.Spanish).Select(y => y.MonoBehaviour as MsbtData).ToList(), messageFiles);
+            CommitMessageFilesYAML(fileManager.GetYAMLs(PathEnum.TradChinese).Select(y => y.MonoBehaviour as MsbtData).ToList(), messageFiles);
         }
 
         /// <summary>
@@ -4981,6 +5554,53 @@ distributionTable
                 }
 
                 monoBehaviour["labelDataArray"].children[0].SetChildrenList(newLabelDataArray.ToArray());
+            }
+        }
+
+        /// <summary>
+        ///  Writes all data into yaml monobehaviors from a superset of MessageFiles.
+        /// </summary>
+        private static void CommitMessageFilesYAML(List<MsbtData> monoBehaviours, List<MessageFile> messageFiles)
+        {
+            foreach (var monoBehaviour in monoBehaviours)
+            {
+                MessageFile messageFile = messageFiles.Find(mf => mf.mName == monoBehaviour?.Name);
+
+                monoBehaviour.LabelDataArray = messageFile.labelDatas.Select(l => new LabelData()
+                {
+                    LabelIndex = l.labelIndex,
+                    ArrayIndex = l.arrayIndex,
+                    LabelName = l.labelName,
+                    StyleInfo = new StyleInfo()
+                    {
+                        StyleIndex = l.styleIndex,
+                        ColorIndex = l.colorIndex,
+                        FontSize = l.fontSize,
+                        MaxWidth = l.maxWidth,
+                        ControlID = l.controlID,
+                    },
+                    AttributeValueArray = l.attributeValues.ToArray(),
+                    TagDataArray = l.tagDatas.Select(t => new TagData()
+                    {
+                        TagIndex = t.tagIndex,
+                        GroupID = t.groupID,
+                        TagID = t.tagID,
+                        TagPatternID = t.tagPatternID,
+                        ForceArticle = t.forceArticle,
+                        TagParameter = t.tagParameter,
+                        TagWordArray = t.tagWordArray.ToArray(),
+                        ForceGrmID = t.forceGrmID,
+                    }).ToArray(),
+                    WordDataArray = l.wordDatas.Select(w => new WordData()
+                    {
+                        PatternID = w.patternID,
+                        EventID = w.eventID,
+                        TagIndex = w.tagIndex,
+                        TagValue = w.tagValue,
+                        Str = w.str,
+                        StrWidth = w.strWidth,
+                    }).ToArray(),
+                }).ToArray();
             }
         }
 
@@ -5261,6 +5881,224 @@ distributionTable
         }
 
         /// <summary>
+        ///  Updates loaded yaml with Trainers.
+        /// </summary>
+        private static void CommitTrainersYAML()
+        {
+            var monoBehaviour = fileManager.GetYAMLs(PathEnum.DprMasterdatas).Find(y => y.MonoBehaviour?.Name == "TrainerTable").MonoBehaviour as TrainerTable;
+
+            monoBehaviour.TrainerData = gameData.trainers.Select((t, i) => new SheetTrainerData()
+            {
+                TypeID = t.trainerTypeID,
+                ColorID = t.colorID,
+                FightType = t.fightType,
+                ArenaID = t.arenaID,
+                EffectID = t.effectID,
+                Gold = t.gold,
+                UseItem1 = t.useItem1,
+                UseItem2 = t.useItem2,
+                UseItem3 = t.useItem3,
+                UseItem4 = t.useItem4,
+                HPRecoverFlag = t.hpRecoverFlag,
+                GiftItem = t.giftItem,
+                NameLabel = t.nameLabel,
+                MsgFieldPokeOne = i < monoBehaviour.TrainerData.Length ? monoBehaviour.TrainerData[i].MsgFieldPokeOne : string.Empty,
+                MsgFieldBefore = i < monoBehaviour.TrainerData.Length ? monoBehaviour.TrainerData[i].MsgFieldBefore : string.Empty,
+                MsgFieldRevenge = i < monoBehaviour.TrainerData.Length ? monoBehaviour.TrainerData[i].MsgFieldRevenge : string.Empty,
+                MsgFieldAfter = i < monoBehaviour.TrainerData.Length ? monoBehaviour.TrainerData[i].MsgFieldAfter : string.Empty,
+                MsgBattle = i < monoBehaviour.TrainerData.Length ? monoBehaviour.TrainerData[i].MsgBattle : new string[8],
+                SeqBattle = i < monoBehaviour.TrainerData.Length ? monoBehaviour.TrainerData[i].SeqBattle : Array.Empty<string>(),
+                AIBit = t.aiBit,
+            }).ToArray();
+
+            monoBehaviour.TrainerPoke = gameData.trainers.Select((t, i) =>
+            {
+                var poke = new SheetTrainerPoke() { ID = i };
+
+                if (t.trainerPokemon.Count >= 1)
+                {
+                    poke.P1MonsNo = t.trainerPokemon[0].dexID;
+                    poke.P1FormNo = t.trainerPokemon[0].formID;
+                    poke.P1IsRare = t.trainerPokemon[0].isRare;
+                    poke.P1Level = t.trainerPokemon[0].level;
+                    poke.P1Sex = t.trainerPokemon[0].sex;
+                    poke.P1Seikaku = t.trainerPokemon[0].natureID;
+                    poke.P1Tokusei = t.trainerPokemon[0].abilityID;
+                    poke.P1Waza1 = t.trainerPokemon[0].moveID1;
+                    poke.P1Waza2 = t.trainerPokemon[0].moveID2;
+                    poke.P1Waza3 = t.trainerPokemon[0].moveID3;
+                    poke.P1Waza4 = t.trainerPokemon[0].moveID4;
+                    poke.P1Item = t.trainerPokemon[0].itemID;
+                    poke.P1Ball = t.trainerPokemon[0].ballID;
+                    poke.P1Seal = t.trainerPokemon[0].seal;
+                    poke.P1TalentHp = t.trainerPokemon[0].hpIV;
+                    poke.P1TalentAtk = t.trainerPokemon[0].atkIV;
+                    poke.P1TalentDef = t.trainerPokemon[0].defIV;
+                    poke.P1TalentSpAtk = t.trainerPokemon[0].spAtkIV;
+                    poke.P1TalentSpDef = t.trainerPokemon[0].spDefIV;
+                    poke.P1TalentAgi = t.trainerPokemon[0].spdIV;
+                    poke.P1EffortHp = t.trainerPokemon[0].hpEV;
+                    poke.P1EffortAtk = t.trainerPokemon[0].atkEV;
+                    poke.P1EffortDef = t.trainerPokemon[0].defEV;
+                    poke.P1EffortSpAtk = t.trainerPokemon[0].spAtkEV;
+                    poke.P1EffortSpDef = t.trainerPokemon[0].spDefEV;
+                    poke.P1EffortAgi = t.trainerPokemon[0].spdEV;
+                }
+
+                if (t.trainerPokemon.Count >= 2)
+                {
+                    poke.P2MonsNo = t.trainerPokemon[1].dexID;
+                    poke.P2FormNo = t.trainerPokemon[1].formID;
+                    poke.P2IsRare = t.trainerPokemon[1].isRare;
+                    poke.P2Level = t.trainerPokemon[1].level;
+                    poke.P2Sex = t.trainerPokemon[1].sex;
+                    poke.P2Seikaku = t.trainerPokemon[1].natureID;
+                    poke.P2Tokusei = t.trainerPokemon[1].abilityID;
+                    poke.P2Waza1 = t.trainerPokemon[1].moveID1;
+                    poke.P2Waza2 = t.trainerPokemon[1].moveID2;
+                    poke.P2Waza3 = t.trainerPokemon[1].moveID3;
+                    poke.P2Waza4 = t.trainerPokemon[1].moveID4;
+                    poke.P2Item = t.trainerPokemon[1].itemID;
+                    poke.P2Ball = t.trainerPokemon[1].ballID;
+                    poke.P2Seal = t.trainerPokemon[1].seal;
+                    poke.P2TalentHp = t.trainerPokemon[1].hpIV;
+                    poke.P2TalentAtk = t.trainerPokemon[1].atkIV;
+                    poke.P2TalentDef = t.trainerPokemon[1].defIV;
+                    poke.P2TalentSpAtk = t.trainerPokemon[1].spAtkIV;
+                    poke.P2TalentSpDef = t.trainerPokemon[1].spDefIV;
+                    poke.P2TalentAgi = t.trainerPokemon[1].spdIV;
+                    poke.P2EffortHp = t.trainerPokemon[1].hpEV;
+                    poke.P2EffortAtk = t.trainerPokemon[1].atkEV;
+                    poke.P2EffortDef = t.trainerPokemon[1].defEV;
+                    poke.P2EffortSpAtk = t.trainerPokemon[1].spAtkEV;
+                    poke.P2EffortSpDef = t.trainerPokemon[1].spDefEV;
+                    poke.P2EffortAgi = t.trainerPokemon[1].spdEV;
+                }
+
+                if (t.trainerPokemon.Count >= 3)
+                {
+                    poke.P3MonsNo = t.trainerPokemon[2].dexID;
+                    poke.P3FormNo = t.trainerPokemon[2].formID;
+                    poke.P3IsRare = t.trainerPokemon[2].isRare;
+                    poke.P3Level = t.trainerPokemon[2].level;
+                    poke.P3Sex = t.trainerPokemon[2].sex;
+                    poke.P3Seikaku = t.trainerPokemon[2].natureID;
+                    poke.P3Tokusei = t.trainerPokemon[2].abilityID;
+                    poke.P3Waza1 = t.trainerPokemon[2].moveID1;
+                    poke.P3Waza2 = t.trainerPokemon[2].moveID2;
+                    poke.P3Waza3 = t.trainerPokemon[2].moveID3;
+                    poke.P3Waza4 = t.trainerPokemon[2].moveID4;
+                    poke.P3Item = t.trainerPokemon[2].itemID;
+                    poke.P3Ball = t.trainerPokemon[2].ballID;
+                    poke.P3Seal = t.trainerPokemon[2].seal;
+                    poke.P3TalentHp = t.trainerPokemon[2].hpIV;
+                    poke.P3TalentAtk = t.trainerPokemon[2].atkIV;
+                    poke.P3TalentDef = t.trainerPokemon[2].defIV;
+                    poke.P3TalentSpAtk = t.trainerPokemon[2].spAtkIV;
+                    poke.P3TalentSpDef = t.trainerPokemon[2].spDefIV;
+                    poke.P3TalentAgi = t.trainerPokemon[2].spdIV;
+                    poke.P3EffortHp = t.trainerPokemon[2].hpEV;
+                    poke.P3EffortAtk = t.trainerPokemon[2].atkEV;
+                    poke.P3EffortDef = t.trainerPokemon[2].defEV;
+                    poke.P3EffortSpAtk = t.trainerPokemon[2].spAtkEV;
+                    poke.P3EffortSpDef = t.trainerPokemon[2].spDefEV;
+                    poke.P3EffortAgi = t.trainerPokemon[2].spdEV;
+                }
+
+                if (t.trainerPokemon.Count >= 4)
+                {
+                    poke.P4MonsNo = t.trainerPokemon[3].dexID;
+                    poke.P4FormNo = t.trainerPokemon[3].formID;
+                    poke.P4IsRare = t.trainerPokemon[3].isRare;
+                    poke.P4Level = t.trainerPokemon[3].level;
+                    poke.P4Sex = t.trainerPokemon[3].sex;
+                    poke.P4Seikaku = t.trainerPokemon[3].natureID;
+                    poke.P4Tokusei = t.trainerPokemon[3].abilityID;
+                    poke.P4Waza1 = t.trainerPokemon[3].moveID1;
+                    poke.P4Waza2 = t.trainerPokemon[3].moveID2;
+                    poke.P4Waza3 = t.trainerPokemon[3].moveID3;
+                    poke.P4Waza4 = t.trainerPokemon[3].moveID4;
+                    poke.P4Item = t.trainerPokemon[3].itemID;
+                    poke.P4Ball = t.trainerPokemon[3].ballID;
+                    poke.P4Seal = t.trainerPokemon[3].seal;
+                    poke.P4TalentHp = t.trainerPokemon[3].hpIV;
+                    poke.P4TalentAtk = t.trainerPokemon[3].atkIV;
+                    poke.P4TalentDef = t.trainerPokemon[3].defIV;
+                    poke.P4TalentSpAtk = t.trainerPokemon[3].spAtkIV;
+                    poke.P4TalentSpDef = t.trainerPokemon[3].spDefIV;
+                    poke.P4TalentAgi = t.trainerPokemon[3].spdIV;
+                    poke.P4EffortHp = t.trainerPokemon[3].hpEV;
+                    poke.P4EffortAtk = t.trainerPokemon[3].atkEV;
+                    poke.P4EffortDef = t.trainerPokemon[3].defEV;
+                    poke.P4EffortSpAtk = t.trainerPokemon[3].spAtkEV;
+                    poke.P4EffortSpDef = t.trainerPokemon[3].spDefEV;
+                    poke.P4EffortAgi = t.trainerPokemon[3].spdEV;
+                }
+
+                if (t.trainerPokemon.Count >= 5)
+                {
+                    poke.P5MonsNo = t.trainerPokemon[4].dexID;
+                    poke.P5FormNo = t.trainerPokemon[4].formID;
+                    poke.P5IsRare = t.trainerPokemon[4].isRare;
+                    poke.P5Level = t.trainerPokemon[4].level;
+                    poke.P5Sex = t.trainerPokemon[4].sex;
+                    poke.P5Seikaku = t.trainerPokemon[4].natureID;
+                    poke.P5Tokusei = t.trainerPokemon[4].abilityID;
+                    poke.P5Waza1 = t.trainerPokemon[4].moveID1;
+                    poke.P5Waza2 = t.trainerPokemon[4].moveID2;
+                    poke.P5Waza3 = t.trainerPokemon[4].moveID3;
+                    poke.P5Waza4 = t.trainerPokemon[4].moveID4;
+                    poke.P5Item = t.trainerPokemon[4].itemID;
+                    poke.P5Ball = t.trainerPokemon[4].ballID;
+                    poke.P5Seal = t.trainerPokemon[4].seal;
+                    poke.P5TalentHp = t.trainerPokemon[4].hpIV;
+                    poke.P5TalentAtk = t.trainerPokemon[4].atkIV;
+                    poke.P5TalentDef = t.trainerPokemon[4].defIV;
+                    poke.P5TalentSpAtk = t.trainerPokemon[4].spAtkIV;
+                    poke.P5TalentSpDef = t.trainerPokemon[4].spDefIV;
+                    poke.P5TalentAgi = t.trainerPokemon[4].spdIV;
+                    poke.P5EffortHp = t.trainerPokemon[4].hpEV;
+                    poke.P5EffortAtk = t.trainerPokemon[4].atkEV;
+                    poke.P5EffortDef = t.trainerPokemon[4].defEV;
+                    poke.P5EffortSpAtk = t.trainerPokemon[4].spAtkEV;
+                    poke.P5EffortSpDef = t.trainerPokemon[4].spDefEV;
+                    poke.P5EffortAgi = t.trainerPokemon[4].spdEV;
+                }
+
+                if (t.trainerPokemon.Count >= 6)
+                {
+                    poke.P6MonsNo = t.trainerPokemon[5].dexID;
+                    poke.P6FormNo = t.trainerPokemon[5].formID;
+                    poke.P6IsRare = t.trainerPokemon[5].isRare;
+                    poke.P6Level = t.trainerPokemon[5].level;
+                    poke.P6Sex = t.trainerPokemon[5].sex;
+                    poke.P6Seikaku = t.trainerPokemon[5].natureID;
+                    poke.P6Tokusei = t.trainerPokemon[5].abilityID;
+                    poke.P6Waza1 = t.trainerPokemon[5].moveID1;
+                    poke.P6Waza2 = t.trainerPokemon[5].moveID2;
+                    poke.P6Waza3 = t.trainerPokemon[5].moveID3;
+                    poke.P6Waza4 = t.trainerPokemon[5].moveID4;
+                    poke.P6Item = t.trainerPokemon[5].itemID;
+                    poke.P6Ball = t.trainerPokemon[5].ballID;
+                    poke.P6Seal = t.trainerPokemon[5].seal;
+                    poke.P6TalentHp = t.trainerPokemon[5].hpIV;
+                    poke.P6TalentAtk = t.trainerPokemon[5].atkIV;
+                    poke.P6TalentDef = t.trainerPokemon[5].defIV;
+                    poke.P6TalentSpAtk = t.trainerPokemon[5].spAtkIV;
+                    poke.P6TalentSpDef = t.trainerPokemon[5].spDefIV;
+                    poke.P6TalentAgi = t.trainerPokemon[5].spdIV;
+                    poke.P6EffortHp = t.trainerPokemon[5].hpEV;
+                    poke.P6EffortAtk = t.trainerPokemon[5].atkEV;
+                    poke.P6EffortDef = t.trainerPokemon[5].defEV;
+                    poke.P6EffortSpAtk = t.trainerPokemon[5].spAtkEV;
+                    poke.P6EffortSpDef = t.trainerPokemon[5].spDefEV;
+                    poke.P6EffortAgi = t.trainerPokemon[5].spdEV;
+                }
+                return poke;
+            }).ToArray();
+        }
+
+        /// <summary>
         ///  Updates loaded bundle with Battle Tower Trainers.
         /// </summary>
         private static void CommitBattleTowerTrainers()
@@ -5299,6 +6137,37 @@ distributionTable
             fileManager.WriteMonoBehaviour(PathEnum.DprMasterdatas, monoBehaviour);
             fileManager.WriteMonoBehaviour(PathEnum.DprMasterdatas, monoBehaviour2);
         }
+
+        /// <summary>
+        ///  Updates loaded yaml with Battle Tower Trainers.
+        /// </summary>
+        private static void CommitBattleTowerTrainersYAML()
+        {
+            var trainers = fileManager.GetYAMLs(PathEnum.DprMasterdatas).Find(y => y.MonoBehaviour?.Name == "TowerSingleStockTable").MonoBehaviour as TowerSingleStockTable;
+            var trainersDouble = fileManager.GetYAMLs(PathEnum.DprMasterdatas).Find(y => y.MonoBehaviour?.Name == "TowerDoubleStockTable").MonoBehaviour as TowerDoubleStockTable;
+
+            trainers.TowerSingleStock = gameData.battleTowerTrainers.Select(t => new SheetTowerSingleStock()
+            {
+                ID = t.trainerID2,
+                TrainerID = t.trainerTypeID,
+                PokeID = new uint[3] { t.battleTowerPokemonID1, t.battleTowerPokemonID2, t.battleTowerPokemonID3 },
+                BattleBGM = t.battleBGM,
+                WinBGM = t.winBGM,
+            }).ToArray();
+
+            trainersDouble.TowerDoubleStock = gameData.battleTowerTrainersDouble.Select(t => new SheetTowerDoubleStock()
+            {
+                ID = t.trainerID2,
+                TrainerID = new int[2] { t.trainerTypeID, t.trainerTypeID2 },
+                PokeID = new uint[4] { t.battleTowerPokemonID1, t.battleTowerPokemonID2, t.battleTowerPokemonID3, t.battleTowerPokemonID4 },
+                BattleBGM = t.battleBGM,
+                WinBGM = t.winBGM,
+            }).ToArray();
+        }
+
+        /// <summary>
+        ///  Updates loaded bundle with Battle Tower Pokémon.
+        /// </summary>
         private static void CommitBattleTowerPokemon()
         {
             AssetTypeValueField monoBehaviour = fileManager.GetMonoBehaviours(PathEnum.DprMasterdatas).Find(m => Encoding.Default.GetString(m.children[3].value.value.asString) == "TowerTrainerTable");
@@ -5339,6 +6208,45 @@ distributionTable
             }
 
             fileManager.WriteMonoBehaviour(PathEnum.DprMasterdatas, monoBehaviour);
+        }
+        
+        /// <summary>
+        ///  Updates loaded yaml with Battle Tower Pokémon.
+        /// </summary>
+        private static void CommitBattleTowerPokemonYAML()
+        {
+            var monoBehaviour = fileManager.GetYAMLs(PathEnum.DprMasterdatas).Find(y => y.MonoBehaviour?.Name == "TowerTrainerTable").MonoBehaviour as TowerTrainerTable;
+
+            monoBehaviour.TrainerPoke = gameData.battleTowerTrainerPokemons.Select(p => new SheetTowerTrainerPoke()
+            {
+                ID = p.pokemonID,
+                MonsNo = p.dexID,
+                FormNo = (ushort)p.formID,
+                IsRare = p.isRare,
+                Level = p.level,
+                Sex = p.sex,
+                Seikaku = p.natureID,
+                Tokusei = p.abilityID,
+                Waza1 = p.moveID1,
+                Waza2 = p.moveID2,
+                Waza3 = p.moveID3,
+                Waza4 = p.moveID4,
+                Item = p.itemID,
+                Ball = p.ballID,
+                Seal = p.seal,
+                TalentHP = p.hpIV,
+                TalentAtk = p.atkIV,
+                TalentDef = p.defIV,
+                TalentSpAtk = p.spAtkIV,
+                TalentSpDef = p.spDefIV,
+                TalentAgi = p.spdIV,
+                EffortHP = p.hpEV,
+                EffortAtk = p.atkEV,
+                EffortDef = p.defEV,
+                EffortSpAtk = p.spAtkEV,
+                EffortSpDef = p.spDefEV,
+                EffortAgi = p.spdEV,
+            }).ToArray();
         }
 
         /// <summary>
@@ -5389,6 +6297,33 @@ distributionTable
         }
 
         /// <summary>
+        ///  Updates loaded yaml with ShopTables.
+        /// </summary>
+        private static void CommitShopTablesYAML()
+        {
+            var monoBehaviour = fileManager.GetYAMLs(PathEnum.DprMasterdatas).Find(y => y.MonoBehaviour?.Name == "ShopTable").MonoBehaviour as ShopTable;
+
+            monoBehaviour.FS = gameData.shopTables.martItems.Select(i => new SheetFS()
+            {
+                ItemNo = i.itemID,
+                BadgeNum = i.badgeNum,
+                ZoneID = i.zoneID,
+            }).ToArray();
+
+            monoBehaviour.FixedShop = gameData.shopTables.fixedShopItems.Select(i => new SheetFixedShop()
+            {
+                ItemNo = i.itemID,
+                ShopID = i.shopID,
+            }).ToArray();
+
+            monoBehaviour.BPShop = gameData.shopTables.bpShopItems.Select(i => new SheetBPShop()
+            {
+                ItemNo = i.itemID,
+                NPCID = i.npcID,
+            }).ToArray();
+        }
+
+        /// <summary>
         ///  Updates loaded bundle with PickupItems.
         /// </summary>
         private static void CommitPickupItems()
@@ -5407,6 +6342,25 @@ distributionTable
             }
 
             fileManager.WriteMonoBehaviour(PathEnum.DprMasterdatas, monoBehaviour);
+        }
+
+        /// <summary>
+        ///  Updates loaded yaml with PickupItems.
+        /// </summary>
+        private static void CommitPickupItemsYAML()
+        {
+            var monoBehaviour = fileManager.GetYAMLs(PathEnum.DprMasterdatas).Find(y => y.MonoBehaviour?.Name == "MonohiroiTable").MonoBehaviour as MonohiroiTable;
+
+            var pickupItemFields = monoBehaviour.MonoHiroi;
+            for (int pickupItemIdx = 0; pickupItemIdx < pickupItemFields.Length; pickupItemIdx++)
+            {
+                PickupItem pickupItem = gameData.pickupItems[pickupItemIdx];
+                pickupItemFields[pickupItemIdx].ID = pickupItem.itemID;
+
+                //Write item probabilities
+                for (int ratio = 0; ratio < pickupItemFields[pickupItemIdx].Ratios.Length && ratio < pickupItem.ratios.Count; ratio++)
+                    pickupItemFields[pickupItemIdx].Ratios[ratio] = pickupItem.ratios[ratio];
+            }
         }
 
         /// <summary>

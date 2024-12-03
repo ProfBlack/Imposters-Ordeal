@@ -72,9 +72,11 @@ namespace ImpostersOrdeal
                         SortKeyForMapping = false,
                         IgnoreNulls = true,
                         EmitAlias = false,
+                        IndentLess = true,
                     };
                     settings.RegisterSerializer(typeof(UnityFile), new UnityFileSerializer());
                     settings.RegisterSerializer(typeof(float), new FloatSerializer());
+                    settings.RegisterSerializer(typeof(string), new StringSerializer());
                     serializer = new SharpYaml.Serialization.Serializer(settings);
                 }
 

@@ -1746,7 +1746,7 @@ namespace ImpostersOrdeal
                 }
 
                 pokemon.externalTMLearnset = fileManager.TryGetExternalJson<TMLearnset>(
-                    $"MonData\\TMLearnset\\monsno_{pokemon.dexID}_formno_{pokemon.formID}.json");
+                    $"MonData\\TMLearnset\\monsno_{pokemon.dexID}_formno_{pokemon.formID}.json", true);
 
                 gameData.personalEntries.Add(pokemon);
 

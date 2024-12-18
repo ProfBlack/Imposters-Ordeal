@@ -91,7 +91,7 @@ namespace ImpostersOrdeal
                 Task.Run(() => ParseEncounterTablesYAML()),
                 Task.Run(() => ParseTrainersYAML()),
                 Task.Run(() => ParseBattleTowerTrainersYAML()),
-                Task.Run(() => ParseUgTablesYAML()),
+                //Task.Run(() => ParseUgTablesYAML()), // Remove UG stuff for now, too many dependencies to keep it in a Unity project
                 Task.Run(() => ParseAbilitiesYAML()),
                 Task.Run(() => ParseTypingsYAML()),
                 Task.Run(() => ParseTrainerTypesYAML()),
@@ -3904,12 +3904,12 @@ namespace ImpostersOrdeal
                 CommitEncounterTablesYAML();
             if (gameData.IsModified(GameDataSet.DataField.MessageFileSets))
                 CommitMessageFileSetsYAML();
-            if (gameData.IsModified(GameDataSet.DataField.UgAreas) ||
+            /*if (gameData.IsModified(GameDataSet.DataField.UgAreas) ||
             gameData.IsModified(GameDataSet.DataField.UgEncounterFiles) ||
             gameData.IsModified(GameDataSet.DataField.UgEncounterLevelSets) ||
             gameData.IsModified(GameDataSet.DataField.UgSpecialEncounters) ||
             gameData.IsModified(GameDataSet.DataField.UgPokemonData))
-                CommitUgTablesYAML();
+                CommitUgTablesYAML();*/ // Remove UG stuff for now, too many dependencies to keep it in a Unity project
             if (gameData.IsModified(GameDataSet.DataField.PersonalEntries))
                 CommitPokemonYAML();
             if (gameData.IsModified(GameDataSet.DataField.Items))

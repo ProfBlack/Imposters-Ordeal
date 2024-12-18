@@ -312,8 +312,8 @@ namespace ImpostersOrdeal
             yamlAssetPaths­[Path.Combine("format_msbt", "tr", "trad_chinese")]        = PathEnum.TradChinese;
             yamlAssetPaths­[Path.Combine("pml", "data")]                              = PathEnum.PersonalMasterdatas;
             yamlAssetPaths­["masterdatas"]                                            = PathEnum.UIMasterdatas;
-            yamlAssetPaths­[Path.Combine("ugassets", "datatable")]                    = PathEnum.Ugdata;
-            yamlAssetPaths­[Path.Combine("ugassets", "datatable", "ug_encounttable")] = PathEnum.Ugdata;
+            //yamlAssetPaths­[Path.Combine("ugassets", "datatable")]                    = PathEnum.Ugdata;
+            //yamlAssetPaths­[Path.Combine("ugassets", "datatable", "ug_encounttable")] = PathEnum.Ugdata;
 
             yamlAssetPaths­[Path.Combine("ExtraData", "Encounters", "Starter")]       = PathEnum.ExternalJSON;
             yamlAssetPaths­[Path.Combine("ExtraData", "Encounters", "HoneyTrees")]    = PathEnum.ExternalJSON;
